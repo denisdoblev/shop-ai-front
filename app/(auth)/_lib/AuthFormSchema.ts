@@ -1,22 +1,42 @@
 import { z } from "zod";
 
-export const authFormSchema = z
+const passwordPattern =
+  /(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
+
+const emailSchema = z
+  .string()
+  .trim()
+  .min(1, "Introduce tu correo electrónico.")
+  .email("Introduce un correo electrónico válido.");
+
+export const loginFormSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: emailSchema,
+  password: z.string().min(1, "Introduce tu contraseña."),
+  acceptTerms: z.boolean(),
+  remember: z.boolean(),
+  mode: z.literal("login"),
+});
+
+export const registerFormSchema = z
   .object({
     firstName: z.string(),
     lastName: z.string(),
-    email: z
+    email: emailSchema,
+    password: z
       .string()
-      .trim()
-      .min(1, "Introduce tu correo electrónico.")
-      .email("Introduce un correo electrónico válido."),
-    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+      .min(6, "La contraseña debe tener al menos 6 caracteres.")
+      .max(20, "La contraseña no puede superar los 20 caracteres.")
+      .regex(
+        passwordPattern,
+        "Incluye una mayúscula, una minúscula y un número o símbolo.",
+      ),
     acceptTerms: z.boolean(),
     remember: z.boolean(),
-    mode: z.enum(["register", "login"]),
+    mode: z.literal("register"),
   })
   .superRefine((values, context) => {
-    if (values.mode !== "register") return;
-
     if (!values.firstName.trim()) {
       context.addIssue({
         code: "custom",
@@ -33,14 +53,6 @@ export const authFormSchema = z
       });
     }
 
-    if (!/\d/.test(values.password)) {
-      context.addIssue({
-        code: "custom",
-        path: ["password"],
-        message: "La contraseña debe incluir al menos un número.",
-      });
-    }
-
     if (!values.acceptTerms) {
       context.addIssue({
         code: "custom",
@@ -49,3 +61,8 @@ export const authFormSchema = z
       });
     }
   });
+
+export const authFormSchema = z.discriminatedUnion("mode", [
+  loginFormSchema,
+  registerFormSchema,
+]);

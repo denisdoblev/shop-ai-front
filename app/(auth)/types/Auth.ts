@@ -9,6 +9,7 @@ export type AuthMode = "register" | "login";
 
 export type AuthFormProps = {
   mode: AuthMode;
+  returnTo?: string;
 };
 
 export type AuthFormValues = z.infer<typeof authFormSchema>;

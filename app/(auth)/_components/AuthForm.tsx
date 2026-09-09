@@ -2,11 +2,14 @@
 
 import {
   ArrowRight,
+  CircleCheck,
+  LoaderCircle,
   Mail,
-  ShieldCheck,
+  TriangleAlert,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 
@@ -20,19 +23,28 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { getSafeReturnTo, withReturnTo } from "@/lib/auth/redirects";
 
+import { useLogin } from "../_hooks/useLogin";
+import { useRegister } from "../_hooks/useRegister";
+import { applyAuthError } from "../_lib/AuthErrors";
 import { authFormSchema } from "../_lib/AuthFormSchema";
 import type { AuthFormProps, AuthFormValues } from "../types/Auth";
 import { PasswordField } from "./PasswordField";
 import { TextField } from "./TextField";
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, returnTo = "/" }: AuthFormProps) {
   const isRegister = mode === "register";
+  const router = useRouter();
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
   const {
     control,
-    formState: { errors, isSubmitSuccessful },
+    clearErrors,
+    formState: { errors },
     handleSubmit,
     register,
+    setError,
   } = useForm<AuthFormValues>({
     resolver: zodResolver(authFormSchema),
     defaultValues: {
@@ -45,6 +57,33 @@ export function AuthForm({ mode }: AuthFormProps) {
       mode,
     },
   });
+  const isPending = loginMutation.isPending || registerMutation.isPending;
+  const isSuccess = loginMutation.isSuccess || registerMutation.isSuccess;
+
+  async function onSubmit(values: AuthFormValues) {
+    clearErrors("root.server");
+
+    try {
+      if (values.mode === "register") {
+        await registerMutation.mutateAsync({
+          email: values.email,
+          fullname: `${values.firstName.trim()} ${values.lastName.trim()}`,
+          password: values.password,
+        });
+      } else {
+        await loginMutation.mutateAsync({
+          email: values.email,
+          password: values.password,
+          remember: values.remember,
+        });
+      }
+
+      router.replace(getSafeReturnTo(returnTo));
+      router.refresh();
+    } catch (error: unknown) {
+      applyAuthError(error, setError);
+    }
+  }
 
   return (
     <>
@@ -57,13 +96,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         </h2>
         <p className="mt-1.5 text-sm text-auth-muted">
           {isRegister ? "¿Ya tienes una cuenta?" : "¿Aún no tienes cuenta?"}{" "}
-          <Link href={isRegister ? "/login" : "/register"} className="font-bold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-primary">
+          <Link href={withReturnTo(isRegister ? "/login" : "/register", returnTo)} className="font-bold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-primary">
             {isRegister ? "Inicia sesión" : "Crea una cuenta"}
           </Link>
         </p>
       </header>
 
-      <form onSubmit={handleSubmit(() => undefined)} noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate aria-busy={isPending}>
         <FieldGroup>
           {isRegister ? (
             <FieldGroup className="sm:grid sm:grid-cols-2">
@@ -124,26 +163,41 @@ export function AuthForm({ mode }: AuthFormProps) {
                 />
                 <FieldLabel htmlFor="remember" className="text-xs text-auth-muted">Recuérdame</FieldLabel>
               </Field>
-              <Link href="/forgot-password" className="font-bold text-primary hover:underline">¿Has olvidado tu contraseña?</Link>
+              <Link href={withReturnTo("/forgot-password", returnTo)} className="font-bold text-primary hover:underline">¿Has olvidado tu contraseña?</Link>
             </FieldGroup>
           )}
 
-          <Button type="submit" size="lg" className="h-12 rounded-xl text-sm font-bold shadow-[0_12px_26px_rgba(79,70,229,0.2)]">
-            {isRegister ? "Crear cuenta" : "Iniciar sesión"}
-            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          {errors.root?.server?.message ? (
+            <Alert variant="destructive">
+              <TriangleAlert aria-hidden="true" />
+              <AlertTitle>No pudimos completar la solicitud</AlertTitle>
+              <AlertDescription>{errors.root.server.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {isSuccess ? (
+            <Alert role="status">
+              <CircleCheck aria-hidden="true" />
+              <AlertTitle>
+                {isRegister ? "Cuenta creada" : "Sesión iniciada"}
+              </AlertTitle>
+              <AlertDescription>Te estamos redirigiendo a ShopAI.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Button type="submit" size="lg" disabled={isPending} className="h-12 rounded-xl text-sm font-bold shadow-[0_12px_26px_rgba(79,70,229,0.2)]">
+            {isPending ? (
+              <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+            ) : null}
+            {isPending
+              ? "Procesando…"
+              : isRegister
+                ? "Crear cuenta"
+                : "Iniciar sesión"}
+            {!isPending ? (
+              <ArrowRight data-icon="inline-end" aria-hidden="true" />
+            ) : null}
           </Button>
-
-          <p className="sr-only" role="status" aria-live="polite">
-            {isSubmitSuccessful ? "Interfaz completada. La conexión con el servicio de autenticación está pendiente." : ""}
-          </p>
-
-          <Alert>
-            <ShieldCheck aria-hidden="true" />
-            <AlertTitle>Seguro desde el diseño</AlertTitle>
-            <AlertDescription className="text-xs leading-4">
-              Esta interfaz protege tus datos. La autenticación y autorización deberán validarse también en el backend.
-            </AlertDescription>
-          </Alert>
         </FieldGroup>
       </form>
     </>

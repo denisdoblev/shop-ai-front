@@ -2,12 +2,14 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 type AuthPlaceholderProps = {
+  backHref?: string;
   description: string;
   eyebrow: string;
   title: string;
 };
 
 export function AuthPlaceholder({
+  backHref = "/login",
   description,
   eyebrow,
   title,
@@ -25,7 +27,7 @@ export function AuthPlaceholder({
           {description}
         </p>
         <Link
-          href="/login"
+          href={backHref}
           className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-md font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <ArrowLeft aria-hidden="true" />

@@ -41,7 +41,7 @@ export function PasswordField({ mode, registration, error }: PasswordFieldProps)
           className="text-auth-ink"
           type={visible ? "text" : "password"}
           autoComplete={mode === "register" ? "new-password" : "current-password"}
-          placeholder={mode === "register" ? "Al menos 8 caracteres" : "Introduce tu contraseña"}
+          placeholder={mode === "register" ? "Entre 6 y 20 caracteres" : "Introduce tu contraseña"}
           aria-invalid={Boolean(error)}
           aria-describedby={descriptionIds || undefined}
           {...registration}
@@ -65,7 +65,9 @@ export function PasswordField({ mode, registration, error }: PasswordFieldProps)
             <span className="h-1 rounded-full bg-auth-meter" />
             <span className="h-1 rounded-full bg-auth-meter" />
           </span>
-          <span className="text-xs">Usa 8 o más caracteres e incluye un número.</span>
+          <span className="text-xs">
+            Usa entre 6 y 20 caracteres, con mayúscula, minúscula y un número o símbolo.
+          </span>
         </FieldDescription>
       ) : null}
       <FieldError id={`${mode}-password-error`}>{error}</FieldError>
