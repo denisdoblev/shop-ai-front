@@ -1,37 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShopAI Frontend
 
-## Getting Started
+Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar con un asistente y administrar el catálogo. El repositorio está en una etapa temprana: la navegación y la interfaz de autenticación existen, pero la mayoría de las páginas son placeholders y todavía no hay integración con backend ni control de acceso real.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 con App Router
+- React 19 y TypeScript estricto
+- Tailwind CSS 4
+- shadcn/ui sobre Base UI
+- React Hook Form y Zod en la interfaz de autenticación
+- pnpm 11.22.0
+
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicación queda disponible, por defecto, en <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Validaciones disponibles:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+```
 
-## Learn More
+No existe aún una suite de tests ni un script `test`.
 
-To learn more about Next.js, take a look at the following resources:
+## Documentación
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Empezá por [`docs/README.md`](docs/README.md). Allí se enlazan la arquitectura, las convenciones comprobadas y la guía de desarrollo.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# shop-ai-front
+Las instrucciones operativas para agentes están en [`AGENTS.md`](AGENTS.md).
