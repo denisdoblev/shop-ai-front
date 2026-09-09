@@ -1,6 +1,10 @@
 import Image from "next/image";
 
-export default function Home() {
+import { requireAuthenticatedUser } from "@/lib/auth/guards";
+
+export default async function Home() {
+  await requireAuthenticatedUser();
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-background">
       <section className="flex w-full max-w-3xl flex-1 flex-col items-center justify-between bg-card px-16 py-32 text-card-foreground sm:items-start">
