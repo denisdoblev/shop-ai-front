@@ -25,9 +25,10 @@ Las propuestas se documentan sólo para evitar que un agente las presente como d
 ## Estado funcional resumido
 
 - La estructura de navegación principal y administrativa está definida en `components/AppSidebar/AppSidebar.tsx`.
-- `/login` y `/register` tienen una interfaz compartida y validación en cliente bajo `app/(auth)/`.
+- `/login` y `/register` tienen una interfaz compartida, validación en cliente e integración real con el backend bajo `app/(auth)/`.
 - `/`, `/explore`, `/compare`, `/assistant`, `/saved`, `/history` y las rutas `/admin/*` usan la carcasa con sidebar, pero casi todas siguen siendo placeholders.
-- No existen endpoints, acceso a datos, autenticación efectiva, autorización, Server Actions ni variables de entorno usadas por la aplicación.
-- No existe suite de tests automatizados.
+- La autenticación usa Route Handlers same-origin, TanStack Query y una cookie JWT `HttpOnly`; el layout de invitados y tanto el layout como cada página protegida validan esa sesión contra el backend.
+- La capa HTTP tipada soporta consumo server/client y sus contratos se generan desde OpenAPI.
+- Existe una suite Vitest para HTTP, BFF y formularios.
 
 No hay evidencia suficiente para crear ADRs ni guías separadas de backend o acceso a datos.

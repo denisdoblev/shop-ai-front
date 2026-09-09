@@ -6,16 +6,16 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 
 ### Routing y layouts
 
-- Se usa App Router en `app/`, con los nombres especiales de Next.js en minúsculas (`layout.tsx`, `page.tsx`). Evidencia: `app/layout.tsx`, `app/(auth)/login/page.tsx` y todas las rutas bajo `app/(authenticated)/`.
-- Los route groups separan experiencias sin alterar la URL: `(auth)` para login, registro y páginas públicas relacionadas con el acceso; `(authenticated)` para la carcasa principal. Evidencia: sus respectivos `layout.tsx` y las rutas `forgot-password`, `privacy` y `terms`.
-- El nombre `(authenticated)` no otorga seguridad. No se debe describir ni reutilizar como mecanismo de autorización hasta que exista una comprobación real.
-- Las páginas y layouts se exportan por defecto. Evidencia: `app/(auth)/register/page.tsx`, `app/(auth)/layout.tsx` y todas las páginas placeholder de `app/(authenticated)/`.
+- Se usa App Router en `app/`, con los nombres especiales de Next.js en minúsculas (`layout.tsx`, `page.tsx`). Evidencia: `app/layout.tsx`, `app/(auth)/(guest)/login/page.tsx` y todas las rutas bajo `app/(authenticated)/`.
+- Los route groups separan experiencias sin alterar la URL: `(auth)` para la superficie pública, su grupo `(guest)` para login, registro y recuperación exclusivos de invitados, y `(authenticated)` para la carcasa protegida. Evidencia: sus respectivos layouts y las rutas `privacy` y `terms` fuera de `(guest)`.
+- El layout `(guest)`, el layout `(authenticated)` y cada página protegida validan `shopai_session` contra `GET /api/auth/check-status`; las páginas repiten el guard porque los layouts persisten durante navegaciones cliente. `getCurrentUser()` memoiza el resultado dentro de un render de servidor para evitar consultas duplicadas. No se considera autenticado a quien sólo presenta una cookie y `proxy.ts` nunca sustituye la comprobación segura.
+- Las páginas y layouts se exportan por defecto. Evidencia: `app/(auth)/(guest)/register/page.tsx`, `app/(auth)/layout.tsx` y todas las páginas placeholder de `app/(authenticated)/`.
 
 ### TypeScript e imports
 
 - TypeScript se ejecuta con `strict: true`, `noEmit: true`, resolución `bundler` y soporte del plugin de Next. Fuente: `tsconfig.json`.
 - El alias `@/*` apunta a la raíz. Se usa para cruzar áreas, por ejemplo desde layouts o features hacia `components/ui`. Evidencia: `app/(authenticated)/layout.tsx` y `app/(auth)/_components/AuthForm.tsx`.
-- Dentro de la feature colocada junto a la ruta se usan imports relativos. Evidencia: `app/(auth)/login/page.tsx` importa `../_components/*`, y `AuthForm.tsx` importa `../_lib/*`, `../types/*` y `./*`.
+- Dentro de la feature colocada junto a la ruta se usan imports relativos. Evidencia: `app/(auth)/(guest)/login/page.tsx` importa `../../_components/*`, y `AuthForm.tsx` importa `../_lib/*`, `../types/*` y `./*`.
 - Los imports sólo de tipos usan `import type`. Evidencia: `app/layout.tsx`, `app/(auth)/types/Auth.ts` y los componentes de autenticación.
 - Los tipos públicos observados usan alias `type`, no interfaces ni prefijos `I`. Evidencia: `app/(auth)/types/Auth.ts` y `SidebarContextProps` en `components/ui/sidebar.tsx`.
 
@@ -41,6 +41,17 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 - ESLint usa flat config con `eslint-config-next/core-web-vitals` y `eslint-config-next/typescript`. Fuente: `eslint.config.mjs`.
 - No existe configuración de Prettier. No ejecutar formateo global ni asumir reglas que ESLint no impone.
 
+### HTTP, contratos y server state
+
+- Toda serialización, parseo y normalización de errores HTTP reutiliza `lib/http/request.ts`; no agregar Axios ni clientes paralelos.
+- Código servidor obtiene el backend mediante `lib/http/server.ts` y la variable privada `BACKEND_URL`. Código cliente usa `lib/http/client.ts` contra rutas same-origin.
+- `lib/api/generated.ts` se genera con `pnpm api:types` desde OpenAPI y no se edita manualmente.
+- El JWT vive exclusivamente en la cookie `shopai_session` `HttpOnly`. Sólo `lib/auth` y los Route Handlers manejan su valor.
+- Los destinos posteriores al acceso deben pasar por la utilidad compartida de `lib/auth`: sólo se aceptan rutas internas que no vuelvan a `/login`, `/register` o `/forgot-password`.
+- Los Server Components llaman al backend directamente. Los Route Handlers se reservan para el límite BFF que necesita transformar la sesión o atender al navegador.
+- TanStack Query se expone mediante `app/providers.tsx`; query keys estables viven en `lib/query/keys.ts` y los hooks de feature encapsulan queries o mutations.
+- La política de caché se decide por request. Autenticación usa `no-store`; no imponerlo globalmente a futuros recursos.
+
 ## Patrón predominante o emergente
 
 Estos patrones orientan cambios pequeños, pero la evidencia todavía no basta para convertirlos en una arquitectura universal.
@@ -61,11 +72,11 @@ No renombrar archivos existentes para uniformarlos sin una decisión explícita.
 
 ### Formularios y validación
 
-En autenticación, el patrón es React Hook Form + `zodResolver` + un schema Zod inferido para obtener el tipo del formulario. Los inputs nativos se registran con `register`; los controles con API propia, como Base UI `Checkbox`, usan `Controller`. Los campos reutilizables reciben `UseFormRegisterReturn` y el mensaje de error.
+En autenticación, el patrón es React Hook Form + `zodResolver` + una unión discriminada de schemas Zod inferida para obtener el tipo del formulario. Login sólo exige que exista una contraseña; registro aplica las reglas de complejidad, nombres y aceptación de términos. Los inputs nativos se registran con `register`; los controles con API propia, como Base UI `Checkbox`, usan `Controller`. Los campos reutilizables reciben `UseFormRegisterReturn` y el mensaje de error.
 
 Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchema.ts` y `app/(auth)/types/Auth.ts`.
 
-Este patrón todavía no cubre validación de servidor, errores HTTP, estados pendientes, reintentos ni mutaciones. No inventar esos contratos a partir del formulario actual.
+Los formularios de autenticación usan hooks de mutación de TanStack Query, deshabilitan el submit mientras está pendiente y traducen errores remotos a errores de campo o formulario. Los schemas Zod validan la interfaz; los DTOs TypeScript provienen de OpenAPI.
 
 ### Imports
 
@@ -92,11 +103,11 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 - **Hook realmente compartido:** usar `hooks/`; hoy sólo existe `use-mobile.ts`.
 - **Utilidad transversal:** usar `lib/` sólo cuando sea compartida; hoy contiene únicamente el reexport de `cn`.
 - **Schema/tipos exclusivos de autenticación:** mantenerlos en `app/(auth)/_lib` y `app/(auth)/types`. Para otros dominios, este esquema es una referencia emergente, no una obligación.
-- **Endpoint, cliente HTTP o acceso a datos:** no hay ubicación establecida. La primera implementación requiere decidir y documentar el límite antes de crear una jerarquía extensa.
+- **Endpoint o acceso a datos:** reutilizar `lib/http`; colocar contratos generados en `lib/api`, concerns de sesión en `lib/auth` y Route Handlers explícitos bajo `app/api` sólo cuando el navegador necesite el BFF.
 
 ## Patrones que no están establecidos
 
-No hay evidencia de barrel files (`index.ts`), gestores de estado global, providers de datos, `fetch`, Axios, SWR, TanStack Query, Server Actions, route handlers, ORM, DTOs de red, middleware/proxy, manejo global de errores, internacionalización ni autenticación real. No introducirlos como si fueran convenciones existentes.
+No hay evidencia de barrel files (`index.ts`), gestores de estado global general, Server Actions, ORM ni internacionalización. El Proxy existente tiene el único alcance de propagar la URL solicitada; no ampliarlo a un proxy HTTP genérico.
 
 ## Propuestas pendientes de decisión
 
@@ -106,8 +117,7 @@ Las siguientes ideas **no son reglas actuales**:
 - definir una política única para nombres de archivos y carpetas privadas;
 - convertir colores literales repetidos en tokens semánticos;
 - fijar el idioma de producto o incorporar una estrategia de i18n;
-- definir autenticación/autorización, capa HTTP y contratos de error;
-- elegir estrategia y niveles de testing;
+- definir autorización por roles en la interfaz;
 - excluir `.agents/` del lint o aceptar explícitamente sus warnings.
 
 Cuando una decisión se implemente de forma consistente, moverla a “Convenciones establecidas” con nueva evidencia.

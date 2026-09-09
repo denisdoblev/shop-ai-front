@@ -12,10 +12,11 @@ El repositorio no contiene `.nvmrc`, `.node-version` ni campo `engines`; por lo 
 
 ```bash
 pnpm install
+cp .env.example .env.local
 pnpm dev
 ```
 
-`pnpm dev` ejecuta `next dev`. La URL predeterminada es <http://localhost:3000>.
+`pnpm dev` ejecuta Next en <http://localhost:3001> para no colisionar con el backend local, que usa <http://localhost:3000>.
 
 Para probar el artefacto de producción:
 
@@ -30,12 +31,14 @@ pnpm start
 
 ```bash
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm typecheck
+pnpm test
 pnpm build
 ```
 
 - `pnpm lint` ejecuta ESLint con Core Web Vitals y reglas TypeScript de Next.
-- `pnpm exec tsc --noEmit` realiza el chequeo de tipos usando `tsconfig.json`. No hay alias de script para typecheck.
+- `pnpm typecheck` realiza el chequeo de tipos usando `tsconfig.json`.
+- `pnpm test` ejecuta Vitest una vez.
 - `pnpm build` valida la compilación de producción de Next.
 
 Ejecutá como mínimo lint y typecheck después de cambios de TypeScript/React. Ejecutá también build al cambiar rutas, layouts, configuración, fuentes o límites Server/Client.
@@ -48,14 +51,7 @@ Al informar una validación, indicá tanto su código de salida como las rutas d
 
 ## Testing
 
-No existen:
-
-- script `test` en `package.json`;
-- archivos `*.test.*` o `*.spec.*` de la aplicación;
-- configuración de Jest, Vitest o Playwright;
-- mocks, fixtures o cobertura versionados.
-
-Por lo tanto, no hay estrategia de testing establecida ni un comando de tests válido. Agregar tests exige elegir primero herramienta, alcance y convenciones; esa elección debe documentarse cuando ocurra.
+Vitest usa `jsdom` y carga `test/setup.ts`. Las pruebas se colocan junto al archivo probado con sufijo `*.test.ts` o `*.test.tsx`. Testing Library cubre comportamiento visible de componentes; los clientes HTTP se prueban sustituyendo `fetch`, sin una dependencia de mocking de red adicional.
 
 ## Configuración relevante
 
@@ -75,9 +71,15 @@ No existe configuración de Prettier.
 
 ## Variables de entorno y servicios
 
-`.gitignore` excluye `.env*`, pero el código no referencia `process.env` y no hay plantilla `.env.example`. Tampoco hay Docker, configuración de infraestructura ni llamadas a servicios externos.
+`.env.example` documenta `BACKEND_URL`, una variable privada que sólo puede importarse desde código servidor. No existe `NEXT_PUBLIC_API_URL`: el navegador consume el BFF same-origin.
 
-No documentar nombres de variables hasta que aparezcan en una plantilla segura o en código/configuración versionados. Nunca copiar valores secretos a la documentación.
+Para regenerar el contrato con el backend activo:
+
+```bash
+pnpm api:types
+```
+
+El comando lee `${BACKEND_URL}/api/docs-json` y reemplaza `lib/api/generated.ts`. Nunca editar ese archivo manualmente ni copiar secretos a la documentación.
 
 ## Documentación y cambios
 

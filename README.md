@@ -1,6 +1,6 @@
 # ShopAI Frontend
 
-Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar con un asistente y administrar el catálogo. El repositorio está en una etapa temprana: la navegación y la interfaz de autenticación existen, pero la mayoría de las páginas son placeholders y todavía no hay integración con backend ni control de acceso real.
+Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar con un asistente y administrar el catálogo. El registro y el login están integrados con el backend mediante un BFF mínimo de Next.js; el grupo `(authenticated)` valida la sesión en su layout y en cada página protegida, aunque la mayoría de las páginas de producto todavía son placeholders.
 
 ## Stack
 
@@ -9,26 +9,29 @@ Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar co
 - Tailwind CSS 4
 - shadcn/ui sobre Base UI
 - React Hook Form y Zod en la interfaz de autenticación
+- TanStack Query para server state en componentes cliente
 - pnpm 11.22.0
 
 ## Desarrollo
 
 ```bash
 pnpm install
+cp .env.example .env.local
 pnpm dev
 ```
 
-La aplicación queda disponible, por defecto, en <http://localhost:3000>.
+El backend debe ejecutarse en <http://localhost:3000>. La aplicación queda disponible en <http://localhost:3001>.
 
 Validaciones disponibles:
 
 ```bash
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm typecheck
+pnpm test
 pnpm build
 ```
 
-No existe aún una suite de tests ni un script `test`.
+Con el backend local activo, `pnpm api:types` vuelve a generar los tipos del contrato OpenAPI.
 
 ## Documentación
 

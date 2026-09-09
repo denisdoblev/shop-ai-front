@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # ShopAI: instrucciones operativas
 
-ShopAI es una única aplicación frontend con Next.js 16 App Router. Las rutas públicas de autenticación viven en `app/(auth)` y la carcasa principal en `app/(authenticated)`. El nombre de este último grupo es organizativo: actualmente no implementa autenticación ni autorización. No hay backend, route handlers, Server Actions ni capa de datos en este repositorio.
+ShopAI es una única aplicación frontend con Next.js 16 App Router. Las rutas públicas y de invitado viven en `app/(auth)` y la carcasa protegida en `app/(authenticated)`. El layout y cada página protegida validan la sesión contra el backend; `proxy.ts` sólo transporta la URL solicitada. La autorización de datos se aplica desde `lib/auth` y en cada operación protegida. La integración HTTP vive en `lib/http`, los contratos generados en `lib/api` y el BFF de autenticación en `app/api/auth`.
 
 ## Antes de modificar
 
@@ -25,17 +25,19 @@ ShopAI es una única aplicación frontend con Next.js 16 App Router. Las rutas p
 - Usá `@/` para imports entre áreas y rutas relativas dentro de una feature colocada junto a su ruta.
 - Reutilizá primero las primitivas instaladas en `components/ui/`. Consultá `components.json` antes de agregar o actualizar componentes shadcn; el proyecto usa el estilo `base-nova`, Base UI, Lucide y Tailwind v4.
 - Definí temas y tokens globales en `app/globals.css`; preferí tokens semánticos existentes a colores literales nuevos.
-- No inventes una capa de servicios, API, persistencia, autenticación o autorización: esas decisiones siguen pendientes.
+- Reutilizá `lib/http` para requests. El servidor usa `BACKEND_URL`; el navegador usa rutas same-origin del BFF y nunca recibe el JWT almacenado en la cookie `HttpOnly`.
+- No agregues un proxy genérico ni expongas `BACKEND_URL` con `NEXT_PUBLIC_`. Los Server Components deben consultar el backend directamente.
 - No conviertas las inconsistencias de formato o nombres registradas en `docs/conventions.md` en reglas implícitas. Si el cambio requiere resolverlas, hacé una propuesta separada.
 
 ## Validación
 
 ```bash
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm typecheck
+pnpm test
 pnpm build
 ```
 
-No hay tests automatizados. `pnpm lint` analiza también `.agents/` y actualmente puede informar warnings ajenos al código de la aplicación; revisá siempre las rutas del reporte.
+Los tests usan Vitest y Testing Library. `pnpm lint` analiza también `.agents/`; revisá siempre las rutas de cualquier warning.
 
 Actualizá `docs/` y este archivo cuando un cambio establezca o invalide una arquitectura, un comando, una ruta, una integración o una convención documentada. Mantené `AGENTS.md` breve y enlazá el detalle en `docs/`.
