@@ -431,9 +431,9 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            categoryId: string;
-            /** Format: uuid */
             attributeId: string;
+            /** @example Battery life */
+            name: string;
             position: number;
             /** Format: date-time */
             createdAt: string;
@@ -801,7 +801,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description A non-deleted brand uses the same slug */
+            /** @description A non-deleted brand uses the same name or slug */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -944,7 +944,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description A non-deleted brand uses the same slug */
+            /** @description A non-deleted brand uses the same name or slug */
             409: {
                 headers: {
                     [name: string]: unknown;
