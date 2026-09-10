@@ -32,6 +32,7 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 - Tailwind CSS 4 se carga en `app/globals.css` mediante `@import "tailwindcss"`; no existe `tailwind.config.*`. Los tokens se exponen con `@theme inline` y variables CSS.
 - Las fuentes se cargan con `next/font` en `app/layout.tsx` y se mapean a `font-sans`, `font-body`, `font-heading`, `font-label` y `font-mono` en `app/globals.css`.
 - Los estilos globales, tokens de marca y tokens propios de autenticación se centralizan en `app/globals.css`. Al extender el tema, ése es el archivo canónico indicado también por `components.json`.
+- El violeta `#5b5bd6` es el primary de producto. Los estados positivos reutilizan los tokens semánticos `success`/`success-foreground` y la variante `success` de Badge, sin colores Tailwind literales en los consumidores.
 - La superficie de autenticación define una paleta `--auth-*` completa para temas claro y oscuro. Sus controles reutilizan los tokens semánticos globales del tema correspondiente, evitando mezclar superficies claras con controles oscuros.
 - Los controles de formulario relacionan label, control y error con `htmlFor`, `id`, `aria-invalid` y `aria-describedby`. Evidencia: `TextField.tsx`, `PasswordField.tsx` y el checkbox de términos en `AuthForm.tsx`.
 
@@ -51,6 +52,14 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 - Los Server Components llaman al backend directamente. Los Route Handlers se reservan para el límite BFF que necesita transformar la sesión o atender al navegador.
 - TanStack Query se expone mediante `app/providers.tsx`; query keys estables viven en `lib/query/keys.ts` y los hooks de feature encapsulan queries o mutations.
 - La política de caché se decide por request. Autenticación usa `no-store`; no imponerlo globalmente a futuros recursos.
+- Los listados administrativos interactivos mantienen filtros y página en la URL. El Server Component traduce esos valores a parámetros del backend y entrega datos serializables a un límite cliente pequeño.
+- Las mutaciones internas iniciadas por componentes cliente usan Server Actions colocadas junto a la feature. Cada acción vuelve a validar la sesión y reutiliza `authenticatedServerRequest`; los fallos esperados se modelan como resultados discriminados.
+
+### Tablas CRUD reutilizables
+
+`components/CrudTable/CrudTable.tsx` es la composición compartida para listados administrativos. Sus columnas y textos son configurables y las decisiones de dominio quedan en un Client Component de la feature. `createAction` es opcional y su ausencia oculta el botón; edición y eliminación se conectan mediante callbacks tipados. La búsqueda y el paginado son controlados para que cada feature pueda respaldarlos con URL y servidor, sin filtrar silenciosamente sólo la página visible. Sus contratos se declaran en `components/CrudTable/types/types.ts`, para separar la API tipada reutilizable de la implementación interactiva; los consumidores importan esos tipos desde ese módulo.
+
+Las acciones por fila se representan con botones de icono etiquetados, Tooltip y confirmación mediante AlertDialog. Los estados sin datos usan Empty y los errores esperados usan Alert. Las primitivas visuales continúan viviendo en `components/ui/` y no incorporan reglas de dominio.
 
 ## Patrón predominante o emergente
 
@@ -77,6 +86,8 @@ En autenticación, el patrón es React Hook Form + `zodResolver` + una unión di
 Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchema.ts` y `app/(auth)/types/Auth.ts`.
 
 Los formularios de autenticación usan hooks de mutación de TanStack Query, deshabilitan el submit mientras está pendiente y traducen errores remotos a errores de campo o formulario. Los schemas Zod validan la interfaz; los DTOs TypeScript provienen de OpenAPI.
+
+El formulario administrativo de brands conserva React Hook Form y Zod en el límite cliente, vuelve a validar el mismo schema dentro de sus Server Actions y usa `useTransition` para el estado pendiente. Las respuestas esperadas de la acción separan errores por campo del mensaje general; los éxitos usan el toaster global y vuelven al listado. Este segundo caso refuerza el patrón, pero no obliga a migrar los formularios existentes.
 
 ### Imports
 
@@ -107,7 +118,7 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 
 ## Patrones que no están establecidos
 
-No hay evidencia de barrel files (`index.ts`), gestores de estado global general, Server Actions, ORM ni internacionalización. El Proxy existente tiene el único alcance de propagar la URL solicitada; no ampliarlo a un proxy HTTP genérico.
+No hay evidencia de barrel files (`index.ts`), gestores de estado global general, ORM ni internacionalización. El Proxy existente tiene el único alcance de propagar la URL solicitada; no ampliarlo a un proxy HTTP genérico.
 
 ## Propuestas pendientes de decisión
 

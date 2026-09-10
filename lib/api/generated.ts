@@ -55,7 +55,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List active brands */
+        /** List non-deleted brands */
         get: operations["BrandsController_findAll"];
         put?: never;
         /** Create a brand */
@@ -73,15 +73,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get an active brand by ID */
+        /** Get a non-deleted brand by ID */
         get: operations["BrandsController_findOne"];
         put?: never;
         post?: never;
-        /** Soft-delete an active brand */
+        /** Soft-delete a brand */
         delete: operations["BrandsController_remove"];
         options?: never;
         head?: never;
-        /** Update an active brand */
+        /** Update a non-deleted brand */
         patch: operations["BrandsController_update"];
         trace?: never;
     };
@@ -733,6 +733,8 @@ export interface operations {
                 limit?: components["schemas"]["Object"];
                 /** @description Offset */
                 offset?: components["schemas"]["Object"];
+                /** @description Case-insensitive partial match on the brand name */
+                name?: string;
             };
             header?: never;
             path?: never;
@@ -748,7 +750,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandResponseDto"][];
                 };
             };
-            /** @description Invalid pagination parameters */
+            /** @description Invalid query parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -799,7 +801,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description An active brand uses the same slug */
+            /** @description A non-deleted brand uses the same slug */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -942,7 +944,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description An active brand uses the same slug */
+            /** @description A non-deleted brand uses the same slug */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2171,4 +2173,3 @@ export interface operations {
         };
     };
 }
-

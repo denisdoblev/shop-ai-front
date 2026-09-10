@@ -33,8 +33,11 @@ app/
     ├── history/page.tsx          # /history
     ├── saved/page.tsx            # /saved
     └── admin/                    # /admin y mantenimiento de catálogo
+        └── brands/               # listado, /new y /[id]/edit
 components/
 ├── AppSidebar/                   # navegación lateral de producto
+├── CrudTable/                    # tabla CRUD genérica con búsqueda, acciones y paginación
+│   └── types/types.ts            # contratos tipados reutilizables de la tabla
 ├── TopNavigation/                # barra superior de producto
 └── ui/                           # primitivas shadcn instaladas como código fuente
 hooks/use-mobile.ts               # detección responsive usada por Sidebar
@@ -64,7 +67,7 @@ app/layout.tsx
     └── /admin y /admin/*                     # cada page vuelve a validarla
 ```
 
-`app/layout.tsx` define `lang="es"`, metadata de ShopAI y las fuentes Inter, Geist y Geist Mono. `app/(auth)/layout.tsx` aplica una superficie visual independiente y su grupo `(guest)` comprueba que no exista una sesión válida. `app/(authenticated)/layout.tsx` exige una sesión válida antes de componer `SidebarProvider`, `AppSidebar`, `SidebarInset` y `TopNavigation`; cada `page.tsx` del grupo repite el guard porque Next.js conserva el layout durante navegaciones cliente. El layout raíz conserva su naturaleza de Server Component y delega solamente el contexto de TanStack Query al Client Component `app/providers.tsx`.
+`app/layout.tsx` define `lang="es"`, metadata de ShopAI y las fuentes Inter, Geist y Geist Mono. `app/(auth)/layout.tsx` aplica una superficie visual independiente y su grupo `(guest)` comprueba que no exista una sesión válida. `app/(authenticated)/layout.tsx` exige una sesión válida antes de componer `SidebarProvider`, `AppSidebar`, `SidebarInset` y `TopNavigation`; cada `page.tsx` del grupo repite el guard porque Next.js conserva el layout durante navegaciones cliente. El layout raíz conserva su naturaleza de Server Component y delega el contexto de TanStack Query y el toaster global al Client Component `app/providers.tsx`.
 
 Los guards consultan `GET /api/auth/check-status` mediante `lib/auth`, por lo que la presencia de `shopai_session` por sí sola no autoriza navegación. Una ausencia de cookie o cualquier fallo de validación se trata como sesión inválida. El layout y las páginas protegidas redirigen a `/login` y conservan la ruta interna solicitada; el layout de invitados redirige sesiones válidas a `/`. `getCurrentUser()` se memoiza durante cada render de servidor para evitar duplicar la consulta cuando layout y página validan juntos. `/privacy` y `/terms` permanecen fuera del guard de invitados.
 
@@ -78,6 +81,7 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 - `components/AppSidebar/AppSidebar.tsx` usa `usePathname()` para marcar navegación activa.
 - `app/(auth)/_components/AuthForm.tsx` usa React Hook Form.
+- `app/(authenticated)/admin/brands/_components/BrandForm.tsx` usa React Hook Form para validación, preview y mutaciones.
 - `app/(auth)/_components/PasswordField.tsx` usa `useState()`.
 - varias primitivas de `components/ui/` declaran `"use client"` por depender de Base UI, contexto o hooks.
 
@@ -116,6 +120,16 @@ Las peticiones de autenticación usan `cache: "no-store"`. La capa servidor acep
 
 `AppSidebar.tsx` contiene dos arreglos estáticos, `workspaceItems` y `administrationItems`, que son la fuente actual de enlaces. Usa `next/link` y compara cada URL con `usePathname()`. El provider de `components/ui/sidebar.tsx` administra el estado responsive y persiste `sidebar_state`; el layout del servidor recupera esa preferencia en la siguiente petición.
 
+### Administración de brands
+
+`/admin/brands` obtiene las marcas desde el backend en su Server Component. Los parámetros `name` y `page` de la URL se traducen a `name`, `limit` y `offset` para que tanto la búsqueda como el paginado sean remotos. Como el backend devuelve un array sin total, el frontend solicita once elementos, muestra diez y usa el elemento adicional sólo para determinar si existe una página siguiente.
+
+La interacción del listado vive en un Client Component de la feature: aplica debounce al buscador, conserva el filtro al cambiar de página y navega a las rutas de alta y edición. La eliminación usa una Server Action que vuelve a validar la sesión, llama a `DELETE /api/brands/{id}` con el JWT `HttpOnly` y revalida el listado. Los errores esperados se devuelven como datos mostrables en lugar de exponer detalles internos.
+
+La presentación del listado se compone con `components/CrudTable/CrudTable.tsx`, que no conoce contratos de brands. Recibe filas, columnas y callbacks para buscar, paginar, crear, editar y eliminar; omitir la acción de creación oculta su botón.
+
+`/admin/brands/new` y `/admin/brands/[id]/edit` son páginas servidor protegidas que reutilizan `BrandForm`. La edición obtiene la marca directamente del backend y convierte identificadores inválidos o ausentes en un 404. El formulario valida `name` y `slug` con Zod y React Hook Form, genera el slug durante el alta hasta que se edita manualmente y refleja los cambios en una preview. Las Server Actions de alta y edición vuelven a validar entrada y sesión, llaman a `POST /api/brands` o `PATCH /api/brands/{id}`, revalidan el listado y devuelven errores serializables. `logoUrl` no forma parte del formulario.
+
 ### Formularios de acceso
 
 `/login` y `/register` pasan un discriminante `mode` y un destino interno validado a `AuthShell` y `AuthForm`. `/forgot-password` es exclusiva de invitados; `/privacy` y `/terms` siguen siendo placeholders públicos. Estas rutas evitan enlaces rotos, pero no implementan flujos ni contenido legal definitivo. `AuthForm.tsx`:
@@ -130,7 +144,7 @@ El submit usa `useLogin` o `useRegister`. Registro transforma nombre y apellidos
 ## Áreas todavía no definidas
 
 - autorización por roles y protección de operaciones de datos;
-- modelo de datos del catálogo y DTOs;
+- modelo de datos del catálogo fuera del contrato inicial de brands;
 - estado global de aplicación fuera del server state administrado por TanStack Query;
 - despliegue y variables de entorno;
 - límites de dominio entre administración, catálogo y asistente.

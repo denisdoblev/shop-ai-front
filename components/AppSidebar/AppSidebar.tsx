@@ -91,9 +91,12 @@ export function AppSidebar() {
               <SidebarMenuItem key={label}>
                 <SidebarMenuButton
                   render={<Link href={url} />}
-                  isActive={pathname === url}
+                  isActive={
+                    pathname === url ||
+                    (url !== "/admin" && pathname.startsWith(`${url}/`))
+                  }
                   size="lg"
-                  className="rounded-xl px-4 text-base font-medium text-sidebar-foreground/75 hover:text-sidebar-foreground"
+                  className="rounded-xl px-4 text-base font-medium text-sidebar-foreground/75 hover:text-sidebar-foreground data-active:border-l-4 data-active:border-primary data-active:bg-sidebar-accent data-active:pl-3 data-active:text-sidebar-foreground"
                 >
                   <Icon />
                   <span>{label}</span>
