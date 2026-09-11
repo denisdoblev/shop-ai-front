@@ -391,24 +391,24 @@ export interface components {
              * Format: uuid
              * @description Active parent category ID
              */
-            parentId?: Record<string, never> | null;
+            parentId?: string | null;
             /** @example Headphones */
             name: string;
             /** @example headphones */
             slug: string;
             /** @example Over-ear, on-ear, and in-ear headphones. */
-            description?: Record<string, never> | null;
+            description?: string | null;
         };
         CategoryResponseDto: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            parentId?: Record<string, never> | null;
+            parentId?: string | null;
             /** @example Headphones */
             name: string;
             /** @example headphones */
             slug: string;
-            description?: Record<string, never> | null;
+            description?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -419,13 +419,13 @@ export interface components {
              * Format: uuid
              * @description Active parent category ID
              */
-            parentId?: Record<string, never> | null;
+            parentId?: string | null;
             /** @example Headphones */
             name?: string;
             /** @example headphones */
             slug?: string;
             /** @example Over-ear, on-ear, and in-ear headphones. */
-            description?: Record<string, never> | null;
+            description?: string | null;
         };
         CategoryAttributeResponseDto: {
             /** Format: uuid */
@@ -960,6 +960,8 @@ export interface operations {
                 limit?: components["schemas"]["Object"];
                 /** @description Offset */
                 offset?: components["schemas"]["Object"];
+                /** @description Case-insensitive partial match on the category name */
+                name?: string;
             };
             header?: never;
             path?: never;
@@ -975,7 +977,7 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryResponseDto"][];
                 };
             };
-            /** @description Invalid pagination parameters */
+            /** @description Invalid query parameters */
             400: {
                 headers: {
                     [name: string]: unknown;

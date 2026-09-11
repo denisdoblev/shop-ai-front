@@ -4,7 +4,7 @@
 
 El repositorio contiene una sola aplicación frontend, no un monorepo de aplicaciones o paquetes. `pnpm-workspace.yaml` configura builds permitidos de pnpm, pero no declara `packages`; `package.json` es el único manifiesto del proyecto.
 
-La aplicación usa Next.js 16.3.4, React 19.2.8 y App Router. Hay layouts, navegación, tema, componentes compartidos y autenticación integrada con el backend. El catálogo y las demás áreas de producto continúan mayormente como placeholders.
+La aplicación usa Next.js 16.3.4, React 19.2.8 y App Router. Hay layouts, navegación, tema, componentes compartidos y autenticación integrada con el backend. La administración de brands y categorías está implementada; las demás áreas de producto continúan mayormente como placeholders.
 
 ## Estructura principal
 
@@ -33,7 +33,8 @@ app/
     ├── history/page.tsx          # /history
     ├── saved/page.tsx            # /saved
     └── admin/                    # /admin y mantenimiento de catálogo
-        └── brands/               # listado, /new y /[id]/edit
+        ├── brands/               # listado, /new y /[id]/edit
+        └── categories/           # listado jerárquico, /new, /[id]/edit y acciones
 components/
 ├── AppSidebar/                   # navegación lateral de producto
 ├── CrudTable/                    # tabla CRUD genérica con búsqueda, acciones y paginación
@@ -81,7 +82,7 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 - `components/AppSidebar/AppSidebar.tsx` usa `usePathname()` para marcar navegación activa.
 - `app/(auth)/_components/AuthForm.tsx` usa React Hook Form.
-- `app/(authenticated)/admin/brands/_components/BrandForm.tsx` usa React Hook Form para validación, preview y mutaciones.
+- Los formularios de `brands` y `categories` usan React Hook Form para validación, preview y mutaciones; sus listados delegan la interacción a Client Components pequeños.
 - `app/(auth)/_components/PasswordField.tsx` usa `useState()`.
 - varias primitivas de `components/ui/` declaran `"use client"` por depender de Base UI, contexto o hooks.
 
@@ -130,6 +131,14 @@ La presentación del listado se compone con `components/CrudTable/CrudTable.tsx`
 
 `/admin/brands/new` y `/admin/brands/[id]/edit` son páginas servidor protegidas que reutilizan `BrandForm`. La edición obtiene la marca directamente del backend y convierte identificadores inválidos o ausentes en un 404. El formulario valida `name` y `slug` con Zod y React Hook Form, genera el slug durante el alta hasta que se edita manualmente y refleja los cambios en una preview. Las Server Actions de alta y edición vuelven a validar entrada y sesión, llaman a `POST /api/brands` o `PATCH /api/brands/{id}`, revalidan el listado y devuelven errores serializables. `logoUrl` no forma parte del formulario.
 
+### Administración de categorías
+
+`/admin/categories` replica el listado remoto paginado de brands con los parámetros `name`, `limit` y `offset`, y también solicita once registros para mostrar diez y detectar la página siguiente. Cada respuesta de la API se normaliza al entrar en la feature: `description` y `parentId`, opcionales en el contrato generado, se convierten a `null` cuando faltan. Así, los tipos internos y la validación del formulario no reciben `undefined`.
+
+Para mostrar la jerarquía, el listado extrae sólo los IDs padre presentes en la página, elimina duplicados y consulta esos registros en paralelo. No recorre todo el catálogo en cada búsqueda o cambio de página. Las categorías raíz se identifican con una insignia y una referencia padre inexistente se presenta como desconocida.
+
+`/admin/categories/new` y `/admin/categories/[id]/edit` son páginas servidor protegidas que reutilizan `CategoryForm`. El formulario administra nombre, slug, categoría padre opcional y descripción; carga el catálogo completo para ofrecer las opciones jerárquicas. En edición se excluyen la propia categoría y todos sus descendientes para impedir ciclos. Las Server Actions de alta, edición y eliminación vuelven a validar entrada y sesión, llaman al CRUD de `/api/categories`, revalidan el listado y convierten los errores esperados en resultados serializables para la interfaz.
+
 ### Formularios de acceso
 
 `/login` y `/register` pasan un discriminante `mode` y un destino interno validado a `AuthShell` y `AuthForm`. `/forgot-password` es exclusiva de invitados; `/privacy` y `/terms` siguen siendo placeholders públicos. Estas rutas evitan enlaces rotos, pero no implementan flujos ni contenido legal definitivo. `AuthForm.tsx`:
@@ -144,7 +153,7 @@ El submit usa `useLogin` o `useRegister`. Registro transforma nombre y apellidos
 ## Áreas todavía no definidas
 
 - autorización por roles y protección de operaciones de datos;
-- modelo de datos del catálogo fuera del contrato inicial de brands;
+- modelo de datos del catálogo fuera de los contratos actuales de brands y categorías;
 - estado global de aplicación fuera del server state administrado por TanStack Query;
 - despliegue y variables de entorno;
 - límites de dominio entre administración, catálogo y asistente.
