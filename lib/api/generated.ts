@@ -457,7 +457,7 @@ export interface components {
              */
             dataType: "string" | "number" | "boolean";
             /** @example hours */
-            unit?: Record<string, never> | null;
+            unit?: string | null;
         };
         AttributeResponseDto: {
             /** Format: uuid */
@@ -469,7 +469,7 @@ export interface components {
             /** @enum {string} */
             dataType: "string" | "number" | "boolean";
             /** @example hours */
-            unit?: Record<string, never> | null;
+            unit?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -486,7 +486,7 @@ export interface components {
              */
             dataType?: "string" | "number" | "boolean";
             /** @example hours */
-            unit?: Record<string, never> | null;
+            unit?: string | null;
         };
         CreateProductDto: {
             /** Format: uuid */
@@ -1338,6 +1338,8 @@ export interface operations {
                 limit?: components["schemas"]["Object"];
                 /** @description Offset */
                 offset?: components["schemas"]["Object"];
+                /** @description Case-insensitive partial match on the attribute name */
+                name?: string;
             };
             header?: never;
             path?: never;

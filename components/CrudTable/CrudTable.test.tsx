@@ -56,4 +56,33 @@ describe("CrudTable", () => {
     await user.click(screen.getByRole("button", { name: "New example" }));
     expect(onCreate).toHaveBeenCalledOnce();
   });
+
+  it("uses custom interface messages when provided", () => {
+    render(
+      <TooltipProvider>
+        <CrudTable
+          columns={columns}
+          deleteDescription={(row) => `Eliminar ${row.name}`}
+          description="Administra ejemplos."
+          emptyDescription="Crea el primer ejemplo."
+          emptyTitle="Sin ejemplos"
+          getRowId={(row) => row.id}
+          getRowLabel={(row) => row.name}
+          items={[item]}
+          messages={{ actions: "Acciones", edit: "Editar" }}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          title="Ejemplos"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText("Acciones")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Editar Example" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete Example" }),
+    ).toBeInTheDocument();
+  });
 });

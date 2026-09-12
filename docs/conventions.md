@@ -57,7 +57,7 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 
 ### Tablas CRUD reutilizables
 
-`components/CrudTable/CrudTable.tsx` es la composición compartida para listados administrativos. Sus columnas y textos son configurables y las decisiones de dominio quedan en un Client Component de la feature. `createAction` es opcional y su ausencia oculta el botón; edición y eliminación se conectan mediante callbacks tipados. La búsqueda y el paginado son controlados para que cada feature pueda respaldarlos con URL y servidor, sin filtrar silenciosamente sólo la página visible. Sus contratos se declaran en `components/CrudTable/types/types.ts`, para separar la API tipada reutilizable de la implementación interactiva; los consumidores importan esos tipos desde ese módulo.
+`components/CrudTable/CrudTable.tsx` es la composición compartida para listados administrativos. Sus columnas, textos de contenido y mensajes de interfaz son configurables y las decisiones de dominio quedan en un Client Component de la feature. Los mensajes mantienen defaults en inglés para compatibilidad y cada consumidor puede reemplazarlos parcialmente. `createAction` es opcional y su ausencia oculta el botón; edición y eliminación se conectan mediante callbacks tipados. La búsqueda y el paginado son controlados para que cada feature pueda respaldarlos con URL y servidor, sin filtrar silenciosamente sólo la página visible. Sus contratos se declaran en `components/CrudTable/types/types.ts`, para separar la API tipada reutilizable de la implementación interactiva; los consumidores importan esos tipos desde ese módulo.
 
 Las acciones por fila se representan con botones de icono etiquetados, Tooltip y confirmación mediante AlertDialog. Los estados sin datos usan Empty y los errores esperados usan Alert. Las primitivas visuales continúan viviendo en `components/ui/` y no incorporan reglas de dominio.
 
@@ -87,7 +87,7 @@ Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchem
 
 Los formularios de autenticación usan hooks de mutación de TanStack Query, deshabilitan el submit mientras está pendiente y traducen errores remotos a errores de campo o formulario. Los schemas Zod validan la interfaz; los DTOs TypeScript provienen de OpenAPI.
 
-El formulario administrativo de brands conserva React Hook Form y Zod en el límite cliente, vuelve a validar el mismo schema dentro de sus Server Actions y usa `useTransition` para el estado pendiente. Las respuestas esperadas de la acción separan errores por campo del mensaje general; los éxitos usan el toaster global y vuelven al listado. Este segundo caso refuerza el patrón, pero no obliga a migrar los formularios existentes.
+Los formularios administrativos de brands, categorías y atributos conservan React Hook Form y Zod en el límite cliente, vuelven a validar el mismo schema dentro de sus Server Actions y usan `useTransition` para el estado pendiente. Las respuestas esperadas de la acción separan errores por campo del mensaje general; los éxitos usan el toaster global y vuelven al listado. Los conjuntos breves de opciones usan `ToggleGroup`; en atributos, el tipo se elige al crear y queda bloqueado durante la edición.
 
 ### Imports
 

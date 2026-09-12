@@ -51,6 +51,22 @@ import { cn } from "@/lib/utils";
 
 import type { CrudTableProps } from "./types/types";
 
+const DEFAULT_MESSAGES = {
+  actions: "Actions",
+  cancel: "Cancel",
+  confirmDelete: "Delete",
+  delete: "Delete",
+  deleteDialogTitle: "Delete this item?",
+  deleteErrorTitle: "Could not delete the item",
+  deleting: "Deleting…",
+  edit: "Edit",
+  next: "Next",
+  nextPage: "Go to next page",
+  page: "Page",
+  previous: "Previous",
+  previousPage: "Go to previous page",
+} as const;
+
 export function CrudTable<TItem>({
   columns,
   createAction,
@@ -62,6 +78,7 @@ export function CrudTable<TItem>({
   getRowId,
   getRowLabel,
   items,
+  messages,
   noResultsDescription = "Try changing or clearing your search.",
   noResultsTitle = "No matching results",
   onDelete,
@@ -70,6 +87,7 @@ export function CrudTable<TItem>({
   search,
   title,
 }: CrudTableProps<TItem>) {
+  const copy = { ...DEFAULT_MESSAGES, ...messages };
   const [deleteTarget, setDeleteTarget] = useState<TItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -133,7 +151,7 @@ export function CrudTable<TItem>({
         {deleteError ? (
           <Alert variant="destructive">
             <AlertCircle />
-            <AlertTitle>Could not delete the item</AlertTitle>
+            <AlertTitle>{copy.deleteErrorTitle}</AlertTitle>
             <AlertDescription>{deleteError}</AlertDescription>
           </Alert>
         ) : null}
@@ -150,7 +168,9 @@ export function CrudTable<TItem>({
                     {column.header}
                   </TableHead>
                 ))}
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-24 text-right">
+                  {copy.actions}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,7 +194,7 @@ export function CrudTable<TItem>({
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  aria-label={`Edit ${rowLabel}`}
+                                  aria-label={`${copy.edit} ${rowLabel}`}
                                   className="border-primary/25 bg-primary/5 text-primary hover:border-primary/50 hover:bg-primary/15 hover:shadow-sm"
                                   onClick={() => onEdit(item)}
                                 />
@@ -182,7 +202,7 @@ export function CrudTable<TItem>({
                             >
                               <Pencil />
                             </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
+                            <TooltipContent>{copy.edit}</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger
@@ -191,14 +211,14 @@ export function CrudTable<TItem>({
                                   type="button"
                                   variant="destructive"
                                   size="icon"
-                                  aria-label={`Delete ${rowLabel}`}
+                                  aria-label={`${copy.delete} ${rowLabel}`}
                                   onClick={() => setDeleteTarget(item)}
                                 />
                               }
                             >
                               <Trash2 />
                             </TooltipTrigger>
-                            <TooltipContent>Delete</TooltipContent>
+                            <TooltipContent>{copy.delete}</TooltipContent>
                           </Tooltip>
                         </div>
                       </TableCell>
@@ -233,14 +253,15 @@ export function CrudTable<TItem>({
         {pagination ? (
           <div className="flex flex-col items-center gap-2">
             <p className="text-sm text-muted-foreground">
-              Page {pagination.page}
+              {copy.page} {pagination.page}
             </p>
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
                     href="#"
-                    text="Previous"
+                    text={copy.previous}
+                    aria-label={copy.previousPage}
                     aria-disabled={
                       !pagination.hasPrevious || pagination.isPending
                     }
@@ -260,7 +281,8 @@ export function CrudTable<TItem>({
                 <PaginationItem>
                   <PaginationNext
                     href="#"
-                    text="Next"
+                    text={copy.next}
+                    aria-label={copy.nextPage}
                     aria-disabled={!pagination.hasNext || pagination.isPending}
                     tabIndex={pagination.hasNext ? undefined : -1}
                     className={cn(
@@ -289,20 +311,22 @@ export function CrudTable<TItem>({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+            <AlertDialogTitle>{copy.deleteDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget ? deleteDescription(deleteTarget) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {copy.cancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               type="button"
               variant="destructive"
               disabled={isDeleting}
               onClick={handleDelete}
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting ? copy.deleting : copy.confirmDelete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

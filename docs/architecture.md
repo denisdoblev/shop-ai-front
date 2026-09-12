@@ -4,7 +4,7 @@
 
 El repositorio contiene una sola aplicación frontend, no un monorepo de aplicaciones o paquetes. `pnpm-workspace.yaml` configura builds permitidos de pnpm, pero no declara `packages`; `package.json` es el único manifiesto del proyecto.
 
-La aplicación usa Next.js 16.3.4, React 19.2.8 y App Router. Hay layouts, navegación, tema, componentes compartidos y autenticación integrada con el backend. La administración de brands y categorías está implementada; las demás áreas de producto continúan mayormente como placeholders.
+La aplicación usa Next.js 16.3.4, React 19.2.8 y App Router. Hay layouts, navegación, tema, componentes compartidos y autenticación integrada con el backend. La administración de brands, categorías y atributos está implementada; las demás áreas de producto continúan mayormente como placeholders.
 
 ## Estructura principal
 
@@ -34,7 +34,8 @@ app/
     ├── saved/page.tsx            # /saved
     └── admin/                    # /admin y mantenimiento de catálogo
         ├── brands/               # listado, /new y /[id]/edit
-        └── categories/           # listado jerárquico, /new, /[id]/edit y acciones
+        ├── categories/           # listado jerárquico, /new, /[id]/edit y acciones
+        └── attributes/           # listado, /new, /[id]/edit y acciones tipadas
 components/
 ├── AppSidebar/                   # navegación lateral de producto
 ├── CrudTable/                    # tabla CRUD genérica con búsqueda, acciones y paginación
@@ -138,6 +139,12 @@ La presentación del listado se compone con `components/CrudTable/CrudTable.tsx`
 Para mostrar la jerarquía, el listado extrae sólo los IDs padre presentes en la página, elimina duplicados y consulta esos registros en paralelo. No recorre todo el catálogo en cada búsqueda o cambio de página. Las categorías raíz se identifican con una insignia y una referencia padre inexistente se presenta como desconocida.
 
 `/admin/categories/new` y `/admin/categories/[id]/edit` son páginas servidor protegidas que reutilizan `CategoryForm`. El formulario administra nombre, slug, categoría padre opcional y descripción; carga el catálogo completo para ofrecer las opciones jerárquicas. En edición se excluyen la propia categoría y todos sus descendientes para impedir ciclos. Las Server Actions de alta, edición y eliminación vuelven a validar entrada y sesión, llaman al CRUD de `/api/categories`, revalidan el listado y convierten los errores esperados en resultados serializables para la interfaz.
+
+### Administración de atributos
+
+`/admin/attributes` replica el listado remoto paginado y buscable de los otros mantenimientos. Conserva `name` y `page` en la URL, solicita once registros para mostrar diez y representa el tipo y la unidad sin alterar el contrato recibido.
+
+`/admin/attributes/new` y `/admin/attributes/[id]/edit` reutilizan `AttributeForm`. El alta exige elegir explícitamente entre texto, número y booleano; la edición muestra el tipo actual bloqueado y su Server Action nunca lo incluye en el `PATCH`. La unidad permanece opcional para cualquier tipo y se normaliza a `null` cuando queda vacía. Las mutaciones vuelven a validar sesión y datos, revalidan el listado y traducen conflictos de slug o dependencias a mensajes seguros.
 
 ### Formularios de acceso
 

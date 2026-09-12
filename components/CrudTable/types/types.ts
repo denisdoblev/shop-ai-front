@@ -33,6 +33,22 @@ export type CrudPagination = {
   page: number;
 };
 
+export type CrudTableMessages = {
+  actions: string;
+  cancel: string;
+  confirmDelete: string;
+  delete: string;
+  deleteDialogTitle: string;
+  deleteErrorTitle: string;
+  deleting: string;
+  edit: string;
+  next: string;
+  nextPage: string;
+  page: string;
+  previous: string;
+  previousPage: string;
+};
+
 export type CrudTableProps<TItem> = {
   columns: CrudColumn<TItem>[];
   createAction?: CrudCreateAction;
@@ -44,6 +60,7 @@ export type CrudTableProps<TItem> = {
   getRowId: (item: TItem) => string;
   getRowLabel: (item: TItem) => string;
   items: TItem[];
+  messages?: Partial<CrudTableMessages>;
   noResultsDescription?: string;
   noResultsTitle?: string;
   onDelete: (item: TItem) => Promise<CrudActionResult>;
