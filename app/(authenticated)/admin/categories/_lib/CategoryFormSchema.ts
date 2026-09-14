@@ -2,10 +2,20 @@ import { z } from "zod";
 
 export const CATEGORY_NAME_MAX_LENGTH = 100;
 export const CATEGORY_SLUG_MAX_LENGTH = 120;
+export const CATEGORY_ATTRIBUTE_MAX_COUNT = 50;
 
 const categorySlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const categoryFormSchema = z.object({
+  attributeIds: z
+    .array(z.string().uuid("Selecciona atributos válidos."))
+    .max(
+      CATEGORY_ATTRIBUTE_MAX_COUNT,
+      `No puedes asignar más de ${CATEGORY_ATTRIBUTE_MAX_COUNT} atributos a una categoría.`,
+    )
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "No puedes asignar el mismo atributo más de una vez.",
+    }),
   description: z.string().trim(),
   name: z
     .string()

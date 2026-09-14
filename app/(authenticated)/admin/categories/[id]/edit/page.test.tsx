@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import EditCategoryPage from "./page";
 
 const mocks = vi.hoisted(() => ({
+  getAllCategoryAttributeOptions: vi.fn(),
   getAllCategories: vi.fn(),
+  getCategoryAttributeAssignments: vi.fn(),
   getCategory: vi.fn(),
   notFound: vi.fn(),
   requireAuthenticatedUser: vi.fn(),
@@ -16,6 +18,10 @@ vi.mock("@/lib/auth/guards", () => ({
 vi.mock("../../_lib/categories", () => ({
   getAllCategories: mocks.getAllCategories,
   getCategory: mocks.getCategory,
+}));
+vi.mock("../../_lib/category-attributes", () => ({
+  getAllCategoryAttributeOptions: mocks.getAllCategoryAttributeOptions,
+  getCategoryAttributeAssignments: mocks.getCategoryAttributeAssignments,
 }));
 vi.mock("../../_components/CategoryForm", () => ({
   CategoryForm: () => null,
@@ -45,6 +51,8 @@ describe("EditCategoryPage", () => {
     mocks.requireAuthenticatedUser.mockResolvedValue({ id: "user-1" });
     mocks.getCategory.mockResolvedValue(root);
     mocks.getAllCategories.mockResolvedValue([root, child]);
+    mocks.getAllCategoryAttributeOptions.mockResolvedValue([]);
+    mocks.getCategoryAttributeAssignments.mockResolvedValue([]);
   });
 
   it("loads editable fields and excludes the category and descendants", async () => {
@@ -55,6 +63,8 @@ describe("EditCategoryPage", () => {
     expect(mocks.requireAuthenticatedUser).toHaveBeenCalledOnce();
     expect(mocks.getCategory).toHaveBeenCalledWith("root");
     expect(result.props).toMatchObject({
+      assignedAttributeIds: [],
+      availableAttributes: [],
       category: {
         description: "Root",
         id: "root",

@@ -24,15 +24,29 @@ export type CategoryListItem = Category & {
   parentName: string | null;
 };
 
+export type CategoryAttributeOption = Pick<
+  components["schemas"]["AttributeResponseDto"],
+  "dataType" | "id" | "name" | "slug"
+> & {
+  unit: string | null;
+};
+
+export type CategoryAttributeAssignment =
+  components["schemas"]["CategoryAttributeResponseDto"];
+
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 export type CategoryFormProps =
   | {
       category?: never;
+      assignedAttributeIds?: never;
+      availableAttributes: CategoryAttributeOption[];
       mode: "create";
       parentCategories: CategoryOption[];
     }
   | {
+      assignedAttributeIds: string[];
+      availableAttributes: CategoryAttributeOption[];
       category: CategoryEditable;
       mode: "edit";
       parentCategories: CategoryOption[];
@@ -45,6 +59,8 @@ export type CategoryFieldErrors = Partial<
 export type CategoryMutationResult =
   | { success: true }
   | {
+      categoryId?: string;
+      categorySaved?: boolean;
       fieldErrors?: CategoryFieldErrors;
       message: string;
       success: false;

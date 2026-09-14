@@ -6,11 +6,13 @@ import {
   Check,
   ChevronRight,
   FolderTree,
+  Search,
+  SlidersHorizontal,
   Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -24,6 +26,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -32,12 +35,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
 } from "@/components/ui/field";
 import {
   InputGroup,
@@ -71,6 +85,12 @@ import type {
 
 const CATEGORY_FORM_ID = "category-form";
 
+const ATTRIBUTE_TYPE_LABELS = {
+  boolean: "Sí / No",
+  number: "Número",
+  string: "Texto",
+} as const;
+
 function applyFieldErrors(
   fieldErrors: CategoryFieldErrors | undefined,
   setError: ReturnType<typeof useForm<CategoryFormValues>>["setError"],
@@ -92,6 +112,10 @@ export function CategoryForm(props: CategoryFormProps) {
   const isCreate = props.mode === "create";
   const router = useRouter();
   const slugWasEdited = useRef(false);
+  const [activeSection, setActiveSection] = useState<"general" | "attributes">(
+    "general",
+  );
+  const [attributeSearch, setAttributeSearch] = useState("");
   const [isPending, startTransition] = useTransition();
   const {
     clearErrors,
@@ -103,8 +127,15 @@ export function CategoryForm(props: CategoryFormProps) {
     setValue,
   } = useForm<CategoryFormValues>({
     defaultValues: isCreate
-      ? { description: "", name: "", parentId: null, slug: "" }
+      ? {
+          attributeIds: [],
+          description: "",
+          name: "",
+          parentId: null,
+          slug: "",
+        }
       : {
+          attributeIds: props.assignedAttributeIds,
           description: props.category.description ?? "",
           name: props.category.name,
           parentId: props.category.parentId,
@@ -112,11 +143,27 @@ export function CategoryForm(props: CategoryFormProps) {
         },
     resolver: zodResolver(categoryFormSchema),
   });
-  const [description = "", name = "", parentId = null, slug = ""] =
+  const [
+    attributeIds = [],
+    description = "",
+    name = "",
+    parentId = null,
+    slug = "",
+  ] =
     useWatch({
       control,
-      name: ["description", "name", "parentId", "slug"],
+      name: ["attributeIds", "description", "name", "parentId", "slug"],
     });
+  const filteredAttributes = useMemo(() => {
+    const search = attributeSearch.trim().toLocaleLowerCase("es");
+    if (!search) return props.availableAttributes;
+
+    return props.availableAttributes.filter((attribute) =>
+      `${attribute.name} ${attribute.slug} ${attribute.unit ?? ""}`
+        .toLocaleLowerCase("es")
+        .includes(search),
+    );
+  }, [attributeSearch, props.availableAttributes]);
   const parentItems = useMemo(
     () => [
       { label: "Sin categoría padre", value: null },
@@ -158,6 +205,15 @@ export function CategoryForm(props: CategoryFormProps) {
         router.refresh();
         return;
       }
+
+      if (isCreate && result.categorySaved && result.categoryId) {
+        toast.warning(result.message);
+        router.replace(`/admin/categories/${result.categoryId}/edit`);
+        router.refresh();
+        return;
+      }
+
+      if (result.categorySaved) toast.warning(result.message);
 
       applyFieldErrors(result.fieldErrors, setError);
       setError("root.server", { message: result.message, type: "server" });
@@ -227,17 +283,49 @@ export function CategoryForm(props: CategoryFormProps) {
       </div>
 
       <div className="grid items-start gap-6 xl:grid-cols-[13rem_minmax(0,1fr)_19rem]">
-        <nav aria-label="Secciones del formulario" className="xl:sticky xl:top-8">
+        <nav
+          aria-label="Secciones del formulario"
+          className="flex flex-col gap-2 xl:sticky xl:top-8"
+        >
           <Button
-            variant="soft"
+            variant={activeSection === "general" ? "soft" : "ghost"}
             size="lg"
             className="w-full justify-between"
-            render={<a href="#informacion-general" />}
+            render={
+              <a
+                href="#informacion-general"
+                aria-current={
+                  activeSection === "general" ? "location" : undefined
+                }
+                onClick={() => setActiveSection("general")}
+              />
+            }
             nativeButton={false}
           >
             <span className="flex items-center gap-2">
               <FolderTree data-icon="inline-start" aria-hidden="true" />
               General
+            </span>
+            <ChevronRight data-icon="inline-end" aria-hidden="true" />
+          </Button>
+          <Button
+            variant={activeSection === "attributes" ? "soft" : "ghost"}
+            size="lg"
+            className="w-full justify-between"
+            render={
+              <a
+                href="#atributos"
+                aria-current={
+                  activeSection === "attributes" ? "location" : undefined
+                }
+                onClick={() => setActiveSection("attributes")}
+              />
+            }
+            nativeButton={false}
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal data-icon="inline-start" aria-hidden="true" />
+              Atributos
             </span>
             <ChevronRight data-icon="inline-end" aria-hidden="true" />
           </Button>
@@ -248,6 +336,7 @@ export function CategoryForm(props: CategoryFormProps) {
           noValidate
           aria-busy={isPending}
           onSubmit={handleSubmit(submit)}
+          className="flex flex-col gap-6"
         >
           <Card id="informacion-general" className="scroll-mt-8">
             <CardHeader className="px-6 pt-3 sm:px-8 sm:pt-5">
@@ -417,6 +506,136 @@ export function CategoryForm(props: CategoryFormProps) {
                   </Alert>
                 ) : null}
               </FieldGroup>
+            </CardContent>
+          </Card>
+
+          <Card id="atributos" className="scroll-mt-8">
+            <CardHeader className="px-6 pt-3 sm:px-8 sm:pt-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <CardTitle role="heading" aria-level={2}>
+                    Atributos
+                  </CardTitle>
+                  <CardDescription>
+                    Selecciona los campos que describen los productos de esta
+                    categoría.
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary">
+                  {attributeIds.length} seleccionados
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5 px-6 pb-3 sm:px-8 sm:pb-5">
+              {props.availableAttributes.length > 0 ? (
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="category-attribute-search">
+                      Buscar atributos
+                    </FieldLabel>
+                    <InputGroup className="h-11">
+                      <InputGroupAddon>
+                        <Search aria-hidden="true" />
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        id="category-attribute-search"
+                        type="search"
+                        value={attributeSearch}
+                        placeholder="Nombre, slug o unidad"
+                        disabled={isPending}
+                        onChange={(event) =>
+                          setAttributeSearch(event.target.value)
+                        }
+                      />
+                    </InputGroup>
+                  </Field>
+
+                  <FieldSet data-invalid={Boolean(errors.attributeIds)}>
+                    <FieldLegend className="sr-only">
+                      Atributos disponibles
+                    </FieldLegend>
+                    {filteredAttributes.length > 0 ? (
+                      <FieldGroup className="max-h-[28rem] overflow-y-auto pr-1">
+                        {filteredAttributes.map((attribute) => {
+                          const checkboxId = `category-attribute-${attribute.id}`;
+                          const checked = attributeIds.includes(attribute.id);
+
+                          return (
+                            <FieldLabel key={attribute.id} htmlFor={checkboxId}>
+                              <Field orientation="horizontal">
+                                <Checkbox
+                                  id={checkboxId}
+                                  checked={checked}
+                                  disabled={isPending}
+                                  aria-invalid={Boolean(errors.attributeIds)}
+                                  onCheckedChange={(isChecked) => {
+                                    setValue(
+                                      "attributeIds",
+                                      isChecked
+                                        ? [...attributeIds, attribute.id]
+                                        : attributeIds.filter(
+                                            (id) => id !== attribute.id,
+                                          ),
+                                      {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      },
+                                    );
+                                  }}
+                                />
+                                <FieldContent>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-medium">
+                                      {attribute.name}
+                                    </span>
+                                    <Badge variant="outline">
+                                      {ATTRIBUTE_TYPE_LABELS[attribute.dataType]}
+                                    </Badge>
+                                    {attribute.unit ? (
+                                      <Badge variant="secondary">
+                                        {attribute.unit}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {attribute.slug}
+                                  </span>
+                                </FieldContent>
+                              </Field>
+                            </FieldLabel>
+                          );
+                        })}
+                      </FieldGroup>
+                    ) : (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Search aria-hidden="true" />
+                          </EmptyMedia>
+                          <EmptyTitle>No encontramos atributos</EmptyTitle>
+                          <EmptyDescription>
+                            Prueba con otro nombre, slug o unidad.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
+                    <FieldError>{errors.attributeIds?.message}</FieldError>
+                  </FieldSet>
+                </>
+              ) : (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <SlidersHorizontal aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>Todavía no hay atributos</EmptyTitle>
+                    <EmptyDescription>
+                      Crea atributos desde la administración para poder
+                      asignarlos a esta categoría.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
             </CardContent>
           </Card>
         </form>
