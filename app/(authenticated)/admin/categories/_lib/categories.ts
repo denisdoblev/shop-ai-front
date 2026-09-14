@@ -2,7 +2,7 @@ import "server-only";
 
 import type { components } from "@/lib/api/generated";
 import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-request";
-import type { Category } from "../types/Category";
+import type { Category } from "../_types/Category";
 
 export const CATEGORIES_PAGE_SIZE = 10;
 const CATEGORY_OPTIONS_BATCH_SIZE = 100;

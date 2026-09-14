@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { CrudTable } from "./CrudTable";
-import type { CrudColumn } from "./types/types";
+import type { CrudColumn } from "./_types/types";
 
 type Item = { id: string; name: string };
 
@@ -84,5 +84,79 @@ describe("CrudTable", () => {
     expect(
       screen.getByRole("button", { name: "Delete Example" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders optional filters without requiring search", () => {
+    render(
+      <TooltipProvider>
+        <CrudTable
+          columns={columns}
+          deleteDescription={(row) => `Delete ${row.name}`}
+          description="Manage examples."
+          emptyDescription="Create the first example."
+          emptyTitle="No examples"
+          filters={<button type="button">Filter examples</button>}
+          getRowId={(row) => row.id}
+          getRowLabel={(row) => row.name}
+          items={[item]}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          title="Examples"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Filter examples" })).toBeInTheDocument();
+  });
+
+  it("renders the no-results copy for active filters without a search", () => {
+    render(
+      <TooltipProvider>
+        <CrudTable
+          columns={columns}
+          deleteDescription={(row) => `Delete ${row.name}`}
+          description="Manage examples."
+          emptyDescription="Create the first example."
+          emptyTitle="No examples"
+          getRowId={(row) => row.id}
+          getRowLabel={(row) => row.name}
+          hasActiveFilters
+          items={[]}
+          noResultsDescription="Clear the filters."
+          noResultsTitle="No filtered examples"
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          title="Examples"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText("No filtered examples")).toBeInTheDocument();
+    expect(screen.getByText("Clear the filters.")).toBeInTheDocument();
+    expect(screen.queryByText("No examples")).not.toBeInTheDocument();
+  });
+
+  it("keeps the empty-state copy when no filters or search are active", () => {
+    render(
+      <TooltipProvider>
+        <CrudTable
+          columns={columns}
+          deleteDescription={(row) => `Delete ${row.name}`}
+          description="Manage examples."
+          emptyDescription="Create the first example."
+          emptyTitle="No examples"
+          getRowId={(row) => row.id}
+          getRowLabel={(row) => row.name}
+          items={[]}
+          noResultsTitle="No filtered examples"
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          title="Examples"
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText("No examples")).toBeInTheDocument();
+    expect(screen.queryByText("No filtered examples")).not.toBeInTheDocument();
   });
 });

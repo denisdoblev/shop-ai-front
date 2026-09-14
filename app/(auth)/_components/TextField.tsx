@@ -9,7 +9,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 
-import type { TextFieldProps } from "../types/Auth";
+import type { TextFieldProps } from "../_types/Auth";
 
 export function TextField({
   icon: Icon,

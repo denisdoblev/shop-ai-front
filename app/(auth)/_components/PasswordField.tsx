@@ -16,7 +16,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 
-import type { PasswordFieldProps } from "../types/Auth";
+import type { PasswordFieldProps } from "../_types/Auth";
 
 export function PasswordField({ mode, registration, error }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);

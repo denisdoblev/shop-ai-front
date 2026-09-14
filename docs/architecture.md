@@ -23,7 +23,7 @@ app/
 │   ├── terms/page.tsx            # /terms (placeholder)
 │   ├── _components/              # UI privada de la feature
 │   ├── _lib/AuthFormSchema.ts    # schema Zod compartido
-│   └── types/Auth.ts             # tipos de la feature
+│   └── _types/Auth.ts            # tipos privados de la feature
 └── (authenticated)/
     ├── layout.tsx                # sidebar y navegación superior
     ├── page.tsx                  # /
@@ -35,11 +35,12 @@ app/
     └── admin/                    # /admin y mantenimiento de catálogo
         ├── brands/               # listado, /new y /[id]/edit
         ├── categories/           # listado jerárquico, /new, /[id]/edit y acciones
-        └── attributes/           # listado, /new, /[id]/edit y acciones tipadas
+        ├── attributes/           # listado, /new, /[id]/edit y acciones tipadas
+        └── products/             # listado filtrable, /new, /[id]/edit y especificaciones
 components/
 ├── AppSidebar/                   # navegación lateral de producto
 ├── CrudTable/                    # tabla CRUD genérica con búsqueda, acciones y paginación
-│   └── types/types.ts            # contratos tipados reutilizables de la tabla
+│   └── _types/types.ts           # contratos tipados internos de la tabla
 ├── TopNavigation/                # barra superior de producto
 └── ui/                           # primitivas shadcn instaladas como código fuente
 hooks/use-mobile.ts               # detección responsive usada por Sidebar
@@ -49,11 +50,12 @@ lib/api/generated.ts             # contrato generado desde OpenAPI
 lib/auth/                         # services de auth, sesión y helpers BFF
 lib/query/                        # QueryClient y query keys
 app/api/auth/                     # BFF de login, registro, sesión y logout
+app/api/admin/categories/[id]/attributes/ # BFF autenticado de plantillas
 public/                           # assets estáticos heredados de create-next-app
 proxy.ts                          # propaga la URL solicitada a los guards
 ```
 
-Los directorios entre paréntesis son route groups: organizan y aplican layouts sin aparecer en la URL. Los directorios `_components` y `_lib` marcan detalles privados de la feature de autenticación. Evidencia: `app/(auth)/layout.tsx`, `app/(authenticated)/layout.tsx` y `app/(auth)/_components/AuthForm.tsx`.
+Los directorios entre paréntesis son route groups: organizan y aplican layouts sin aparecer en la URL. Los directorios de implementación llevan prefijo `_`, incluidos `_components`, `_hooks`, `_lib` y `_types`; dentro de `app/`, Next.js los excluye explícitamente del sistema de rutas. Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_types/Auth.ts` y los módulos administrativos colocados junto a sus rutas.
 
 ## Jerarquía de layouts
 
@@ -147,6 +149,14 @@ Las Server Actions de alta y edición vuelven a validar entrada y sesión, limit
 `/admin/attributes` replica el listado remoto paginado y buscable de los otros mantenimientos. Conserva `name` y `page` en la URL, solicita once registros para mostrar diez y representa el tipo y la unidad sin alterar el contrato recibido.
 
 `/admin/attributes/new` y `/admin/attributes/[id]/edit` reutilizan `AttributeForm`. El alta exige elegir explícitamente entre texto, número y booleano; la edición muestra el tipo actual bloqueado y su Server Action nunca lo incluye en el `PATCH`. La unidad permanece opcional para cualquier tipo y se normaliza a `null` cuando queda vacía. Las mutaciones vuelven a validar sesión y datos, revalidan el listado y traducen conflictos de slug o dependencias a mensajes seguros.
+
+### Administración de productos
+
+`/admin/products` lista productos con paginado remoto y conserva en la URL la búsqueda por nombre y los filtros de marca y categoría. Los nombres se resuelven en el Server Component y la interacción reutiliza el área opcional `filters` de `CrudTable`.
+
+`/admin/products/new` y `/admin/products/[id]/edit` mantienen la lectura inicial y el guard en servidor. `ProductForm` carga con TanStack Query la plantilla directa desde `GET /api/admin/categories/:id/attributes`, representa texto, número y booleanos ternarios y bloquea el guardado mientras la plantilla está cargando o en error.
+
+Las Server Actions validan schema, sesión y el tipo de los atributos que pertenecen a la plantilla seleccionada. Los valores recibidos para atributos ajenos se ignoran como estado deseado: guardan primero el producto y luego la reconciliación elimina sus especificaciones existentes, con un máximo de cinco solicitudes concurrentes. La sincronización no es transaccional: un fallo parcial conserva el producto, devuelve `productSaved`/`productId` y permite reintentar desde edición. Los valores vacíos también se eliminan.
 
 ### Formularios de acceso
 

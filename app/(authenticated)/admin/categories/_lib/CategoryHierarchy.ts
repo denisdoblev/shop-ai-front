@@ -1,4 +1,4 @@
-import type { CategoryOption } from "../types/Category";
+import type { CategoryOption } from "../_types/Category";
 
 export function getAvailableParentCategories(
   categories: CategoryOption[],

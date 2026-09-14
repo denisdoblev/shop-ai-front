@@ -6,7 +6,7 @@ import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-requ
 import type {
   CategoryAttributeAssignment,
   CategoryAttributeOption,
-} from "../types/Category";
+} from "../_types/Category";
 
 const ATTRIBUTE_OPTIONS_BATCH_SIZE = 100;
 

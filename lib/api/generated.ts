@@ -512,8 +512,8 @@ export interface components {
             name: string;
             /** @example sony-wh-1000xm6 */
             slug: string;
-            model?: Record<string, never> | null;
-            description?: Record<string, never> | null;
+            model?: string | null;
+            description?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1565,6 +1565,8 @@ export interface operations {
                 limit?: components["schemas"]["Object"];
                 /** @description Offset */
                 offset?: components["schemas"]["Object"];
+                /** @description Partial case-insensitive product name search */
+                name?: string;
                 brandId?: string;
                 categoryId?: string;
                 /** @description Attribute to filter through product specifications */

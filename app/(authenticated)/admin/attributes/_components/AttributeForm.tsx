@@ -70,7 +70,7 @@ import type {
   AttributeFieldErrors,
   AttributeFormProps,
   AttributeFormValues,
-} from "../types/Attribute";
+} from "../_types/Attribute";
 
 const ATTRIBUTE_FORM_ID = "attribute-form";
 const TRANSPORT_ERROR_MESSAGE =

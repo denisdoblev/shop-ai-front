@@ -58,7 +58,7 @@ import type {
   BrandFieldErrors,
   BrandFormProps,
   BrandFormValues,
-} from "../types/Brand";
+} from "../_types/Brand";
 
 const BRAND_FORM_ID = "brand-form";
 

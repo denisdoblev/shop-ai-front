@@ -81,7 +81,7 @@ import type {
   CategoryFieldErrors,
   CategoryFormProps,
   CategoryFormValues,
-} from "../types/Category";
+} from "../_types/Category";
 
 const CATEGORY_FORM_ID = "category-form";
 

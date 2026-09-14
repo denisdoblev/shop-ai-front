@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { CrudActionResult } from "@/components/CrudTable/types/types";
+import type { CrudActionResult } from "@/components/CrudTable/_types/types";
 import type { components } from "@/lib/api/generated";
 import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-request";
 import { requireAuthenticatedUser } from "@/lib/auth/guards";
@@ -14,7 +14,7 @@ import type {
   CategoryFieldErrors,
   CategoryFormValues,
   CategoryMutationResult,
-} from "./types/Category";
+} from "./_types/Category";
 
 const CATEGORIES_PATH = "/admin/categories";
 

@@ -4,11 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { CrudTable } from "@/components/CrudTable/CrudTable";
-import type { CrudColumn } from "@/components/CrudTable/types/types";
+import type { CrudColumn } from "@/components/CrudTable/_types/types";
 import { Badge } from "@/components/ui/badge";
 
 import { deleteCategory } from "../actions";
-import type { CategoryListItem } from "../types/Category";
+import type { CategoryListItem } from "../_types/Category";
 
 const SEARCH_DELAY_MS = 350;
 

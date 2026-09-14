@@ -3,7 +3,7 @@ import "server-only";
 import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-request";
 import { HttpError } from "@/lib/http/errors";
 
-import type { Brand } from "../types/Brand";
+import type { Brand } from "../_types/Brand";
 
 export const BRANDS_PAGE_SIZE = 10;
 

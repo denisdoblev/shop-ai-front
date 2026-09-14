@@ -7,11 +7,11 @@ import { CrudTable } from "@/components/CrudTable/CrudTable";
 import type {
   CrudColumn,
   CrudTableMessages,
-} from "@/components/CrudTable/types/types";
+} from "@/components/CrudTable/_types/types";
 import { Badge } from "@/components/ui/badge";
 
 import { deleteAttribute } from "../actions";
-import type { Attribute, AttributeDataType } from "../types/Attribute";
+import type { Attribute, AttributeDataType } from "../_types/Attribute";
 
 const SEARCH_DELAY_MS = 350;
 

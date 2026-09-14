@@ -2,7 +2,7 @@ import type { UseFormSetError } from "react-hook-form";
 
 import { HttpError, NetworkError, getErrorMessages } from "@/lib/http/errors";
 
-import type { AuthFormValues } from "../types/Auth";
+import type { AuthFormValues } from "../_types/Auth";
 
 export function applyAuthError(
   error: unknown,

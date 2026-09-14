@@ -4,10 +4,15 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 
 ## Convenciones establecidas
 
+### Sincronizaciones no transaccionales
+
+Las relaciones anidadas sin endpoint de reemplazo —asignaciones de categoría y especificaciones de producto— se reconcilian después de guardar el recurso principal, con concurrencia máxima de cinco solicitudes. En productos, la plantilla seleccionada define el estado deseado: los atributos ajenos se ignoran como entrada y cualquier especificación previa asociada a ellos se elimina. Las acciones devuelven explícitamente el guardado parcial y, en altas, el identificador creado para continuar en edición; no se simula atomicidad que el backend no ofrece.
+
 ### Routing y layouts
 
 - Se usa App Router en `app/`, con los nombres especiales de Next.js en minúsculas (`layout.tsx`, `page.tsx`). Evidencia: `app/layout.tsx`, `app/(auth)/(guest)/login/page.tsx` y todas las rutas bajo `app/(authenticated)/`.
 - Los route groups separan experiencias sin alterar la URL: `(auth)` para la superficie pública, su grupo `(guest)` para login, registro y recuperación exclusivos de invitados, y `(authenticated)` para la carcasa protegida. Evidencia: sus respectivos layouts y las rutas `privacy` y `terms` fuera de `(guest)`.
+- Las carpetas internas colocadas junto a una feature llevan prefijo `_`, como `_components`, `_hooks`, `_lib` y `_types`. En `app/`, este prefijo también las excluye explícitamente del sistema de rutas de Next.js; se conserva la misma señal en componentes compartidos cuando la carpeta no forma parte de su API pública.
 - El layout `(guest)`, el layout `(authenticated)` y cada página protegida validan `shopai_session` contra `GET /api/auth/check-status`; las páginas repiten el guard porque los layouts persisten durante navegaciones cliente. `getCurrentUser()` memoiza el resultado dentro de un render de servidor para evitar consultas duplicadas. No se considera autenticado a quien sólo presenta una cookie y `proxy.ts` nunca sustituye la comprobación segura.
 - Las páginas y layouts se exportan por defecto. Evidencia: `app/(auth)/(guest)/register/page.tsx`, `app/(auth)/layout.tsx` y todas las páginas placeholder de `app/(authenticated)/`.
 
@@ -15,9 +20,9 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 
 - TypeScript se ejecuta con `strict: true`, `noEmit: true`, resolución `bundler` y soporte del plugin de Next. Fuente: `tsconfig.json`.
 - El alias `@/*` apunta a la raíz. Se usa para cruzar áreas, por ejemplo desde layouts o features hacia `components/ui`. Evidencia: `app/(authenticated)/layout.tsx` y `app/(auth)/_components/AuthForm.tsx`.
-- Dentro de la feature colocada junto a la ruta se usan imports relativos. Evidencia: `app/(auth)/(guest)/login/page.tsx` importa `../../_components/*`, y `AuthForm.tsx` importa `../_lib/*`, `../types/*` y `./*`.
-- Los imports sólo de tipos usan `import type`. Evidencia: `app/layout.tsx`, `app/(auth)/types/Auth.ts` y los componentes de autenticación.
-- Los tipos públicos observados usan alias `type`, no interfaces ni prefijos `I`. Evidencia: `app/(auth)/types/Auth.ts` y `SidebarContextProps` en `components/ui/sidebar.tsx`.
+- Dentro de la feature colocada junto a la ruta se usan imports relativos. Evidencia: `app/(auth)/(guest)/login/page.tsx` importa `../../_components/*`, y `AuthForm.tsx` importa `../_lib/*`, `../_types/*` y `./*`.
+- Los imports sólo de tipos usan `import type`. Evidencia: `app/layout.tsx`, `app/(auth)/_types/Auth.ts` y los componentes de autenticación.
+- Los tipos públicos observados usan alias `type`, no interfaces ni prefijos `I`. Evidencia: `app/(auth)/_types/Auth.ts` y `SidebarContextProps` en `components/ui/sidebar.tsx`.
 
 ### Server y Client Components
 
@@ -57,7 +62,7 @@ Este documento separa reglas comprobadas de patrones incipientes, inconsistencia
 
 ### Tablas CRUD reutilizables
 
-`components/CrudTable/CrudTable.tsx` es la composición compartida para listados administrativos. Sus columnas, textos de contenido y mensajes de interfaz son configurables y las decisiones de dominio quedan en un Client Component de la feature. Los mensajes mantienen defaults en inglés para compatibilidad y cada consumidor puede reemplazarlos parcialmente. `createAction` es opcional y su ausencia oculta el botón; edición y eliminación se conectan mediante callbacks tipados. La búsqueda y el paginado son controlados para que cada feature pueda respaldarlos con URL y servidor, sin filtrar silenciosamente sólo la página visible. Sus contratos se declaran en `components/CrudTable/types/types.ts`, para separar la API tipada reutilizable de la implementación interactiva; los consumidores importan esos tipos desde ese módulo.
+`components/CrudTable/CrudTable.tsx` es la composición compartida para listados administrativos. Sus columnas, textos de contenido y mensajes de interfaz son configurables y las decisiones de dominio quedan en un Client Component de la feature. Los mensajes mantienen defaults en inglés para compatibilidad y cada consumidor puede reemplazarlos parcialmente. `createAction` es opcional y su ausencia oculta el botón; edición y eliminación se conectan mediante callbacks tipados. La búsqueda y el paginado son controlados para que cada feature pueda respaldarlos con URL y servidor, sin filtrar silenciosamente sólo la página visible. Sus contratos se declaran en `components/CrudTable/_types/types.ts`, para separar la API tipada reutilizable de la implementación interactiva; los consumidores importan esos tipos desde ese módulo.
 
 Las acciones por fila se representan con botones de icono etiquetados, Tooltip y confirmación mediante AlertDialog. Los estados sin datos usan Empty y los errores esperados usan Alert. Las primitivas visuales continúan viviendo en `components/ui/` y no incorporan reglas de dominio.
 
@@ -67,7 +72,7 @@ Estos patrones orientan cambios pequeños, pero la evidencia todavía no basta p
 
 ### Colocación por feature
 
-La feature de autenticación coloca UI privada en `_components`, lógica de validación en `_lib` y tipos en `types`, todo bajo `app/(auth)`. Es el ejemplo más completo disponible, pero es una sola feature. Puede reutilizarse para una feature estrictamente ligada a una ruta; no obliga a migrar los componentes compartidos de raíz ni define cómo organizar servicios futuros.
+La feature de autenticación coloca UI privada en `_components`, lógica de validación en `_lib` y tipos en `_types`, todo bajo `app/(auth)`. Es el ejemplo más completo disponible, pero es una sola feature. Puede reutilizarse para una feature estrictamente ligada a una ruta; no obliga a migrar los componentes compartidos de raíz ni define cómo organizar servicios futuros.
 
 ### Nombres
 
@@ -83,7 +88,7 @@ No renombrar archivos existentes para uniformarlos sin una decisión explícita.
 
 En autenticación, el patrón es React Hook Form + `zodResolver` + una unión discriminada de schemas Zod inferida para obtener el tipo del formulario. Login sólo exige que exista una contraseña; registro aplica las reglas de complejidad, nombres y aceptación de términos. Los inputs nativos se registran con `register`; los controles con API propia, como Base UI `Checkbox`, usan `Controller`. Los campos reutilizables reciben `UseFormRegisterReturn` y el mensaje de error.
 
-Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchema.ts` y `app/(auth)/types/Auth.ts`.
+Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchema.ts` y `app/(auth)/_types/Auth.ts`.
 
 Los formularios de autenticación usan hooks de mutación de TanStack Query, deshabilitan el submit mientras está pendiente y traducen errores remotos a errores de campo o formulario. Los schemas Zod validan la interfaz; los DTOs TypeScript provienen de OpenAPI.
 
@@ -103,7 +108,6 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 | Colores | existen tokens semánticos en `globals.css`, pero `AuthShell.tsx` y `PasswordField.tsx` contienen varios colores y sombras literales | reutilizar tokens cuando existan; no hacer una limpieza global sin alcance explícito |
 | Idioma visible | metadata y autenticación están en español; sidebar y páginas placeholder están en inglés | no hay política de localización definida; mantener coherencia con la pantalla modificada |
 | Estado de páginas | autenticación tiene componentes y validación; las rutas principales y administrativas son mayormente placeholders | no usar los placeholders como ejemplo de arquitectura de feature completa |
-| Directorio de tipos | `app/(auth)/types` no lleva `_`, a diferencia de `_components` y `_lib` | es seguro en App Router, pero no hay una convención uniforme sobre carpetas privadas |
 
 ## Dónde implementar
 
@@ -113,7 +117,7 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 - **Primitiva de diseño genérica:** revisar primero `components/ui/` y `components.json`. Si se incorpora una primitiva shadcn, se agrega como código fuente a `components/ui/`; no mezclarla con reglas de dominio.
 - **Hook realmente compartido:** usar `hooks/`; hoy sólo existe `use-mobile.ts`.
 - **Utilidad transversal:** usar `lib/` sólo cuando sea compartida; hoy contiene únicamente el reexport de `cn`.
-- **Schema/tipos exclusivos de autenticación:** mantenerlos en `app/(auth)/_lib` y `app/(auth)/types`. Para otros dominios, este esquema es una referencia emergente, no una obligación.
+- **Schema/tipos exclusivos de autenticación:** mantenerlos en `app/(auth)/_lib` y `app/(auth)/_types`. Para otros dominios, este esquema es una referencia emergente, no una obligación.
 - **Endpoint o acceso a datos:** reutilizar `lib/http`; colocar contratos generados en `lib/api`, concerns de sesión en `lib/auth` y Route Handlers explícitos bajo `app/api` sólo cuando el navegador necesite el BFF.
 
 ## Patrones que no están establecidos
@@ -125,7 +129,6 @@ No hay evidencia de barrel files (`index.ts`), gestores de estado global general
 Las siguientes ideas **no son reglas actuales**:
 
 - adoptar un formatter y fijar punto y coma, comillas y orden de imports;
-- definir una política única para nombres de archivos y carpetas privadas;
 - convertir colores literales repetidos en tokens semánticos;
 - fijar el idioma de producto o incorporar una estrategia de i18n;
 - definir autorización por roles en la interfaz;

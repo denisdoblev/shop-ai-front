@@ -3,7 +3,7 @@ import "server-only";
 import type { components } from "@/lib/api/generated";
 import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-request";
 
-import type { Attribute } from "../types/Attribute";
+import type { Attribute } from "../_types/Attribute";
 
 export const ATTRIBUTES_PAGE_SIZE = 10;
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { CrudActionResult } from "@/components/CrudTable/types/types";
+import type { CrudActionResult } from "@/components/CrudTable/_types/types";
 import { authenticatedServerRequest } from "@/lib/auth/authenticated-server-request";
 import { requireAuthenticatedUser } from "@/lib/auth/guards";
 import { HttpError, NetworkError } from "@/lib/http/errors";
@@ -13,7 +13,7 @@ import type {
   BrandFieldErrors,
   BrandFormValues,
   BrandMutationResult,
-} from "./types/Brand";
+} from "./_types/Brand";
 
 const BRANDS_PATH = "/admin/brands";
 

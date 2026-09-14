@@ -29,7 +29,7 @@ import { useLogin } from "../_hooks/useLogin";
 import { useRegister } from "../_hooks/useRegister";
 import { applyAuthError } from "../_lib/AuthErrors";
 import { authFormSchema } from "../_lib/AuthFormSchema";
-import type { AuthFormProps, AuthFormValues } from "../types/Auth";
+import type { AuthFormProps, AuthFormValues } from "../_types/Auth";
 import { PasswordField } from "./PasswordField";
 import { TextField } from "./TextField";
 

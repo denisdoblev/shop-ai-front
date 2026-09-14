@@ -4,10 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { CrudTable } from "@/components/CrudTable/CrudTable";
-import type { CrudColumn } from "@/components/CrudTable/types/types";
+import type { CrudColumn } from "@/components/CrudTable/_types/types";
 
 import { deleteBrand } from "../actions";
-import type { Brand } from "../types/Brand";
+import type { Brand } from "../_types/Brand";
 
 const SEARCH_DELAY_MS = 350;
 

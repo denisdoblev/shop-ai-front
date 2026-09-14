@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-import type { AuthShellProps } from "../types/Auth";
+import type { AuthShellProps } from "../_types/Auth";
 
 const benefits = [
   "Mantén una lista de favoritos ordenada",

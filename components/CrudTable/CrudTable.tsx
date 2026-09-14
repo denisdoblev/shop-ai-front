@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import type { CrudTableProps } from "./types/types";
+import type { CrudTableProps } from "./_types/types";
 
 const DEFAULT_MESSAGES = {
   actions: "Actions",
@@ -75,8 +75,10 @@ export function CrudTable<TItem>({
   emptyDescription,
   emptyTitle,
   eyebrow,
+  filters,
   getRowId,
   getRowLabel,
+  hasActiveFilters = false,
   items,
   messages,
   noResultsDescription = "Try changing or clearing your search.",
@@ -92,7 +94,9 @@ export function CrudTable<TItem>({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, startDeleteTransition] = useTransition();
   const isEmptyResult =
-    Boolean(search?.value.trim()) || (pagination?.page ?? 1) > 1;
+    Boolean(search?.value.trim()) ||
+    hasActiveFilters ||
+    (pagination?.page ?? 1) > 1;
 
   function handleDelete() {
     if (!deleteTarget) return;
@@ -133,19 +137,22 @@ export function CrudTable<TItem>({
       </header>
 
       <div className="flex flex-col gap-6">
-        {search ? (
-          <InputGroup className="h-10 max-w-md bg-card">
-            <InputGroupAddon>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              aria-label={search.placeholder}
-              maxLength={search.maxLength}
-              onChange={(event) => search.onValueChange(event.target.value)}
-              placeholder={search.placeholder}
-              value={search.value}
-            />
-          </InputGroup>
+        {search || filters ? (
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            {search ? (
+              <InputGroup className="h-10 max-w-md bg-card">
+                <InputGroupAddon><Search /></InputGroupAddon>
+                <InputGroupInput
+                  aria-label={search.placeholder}
+                  maxLength={search.maxLength}
+                  onChange={(event) => search.onValueChange(event.target.value)}
+                  placeholder={search.placeholder}
+                  value={search.value}
+                />
+              </InputGroup>
+            ) : null}
+            {filters}
+          </div>
         ) : null}
 
         {deleteError ? (

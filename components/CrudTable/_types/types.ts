@@ -57,8 +57,10 @@ export type CrudTableProps<TItem> = {
   emptyDescription: string;
   emptyTitle: string;
   eyebrow?: string;
+  filters?: ReactNode;
   getRowId: (item: TItem) => string;
   getRowLabel: (item: TItem) => string;
+  hasActiveFilters?: boolean;
   items: TItem[];
   messages?: Partial<CrudTableMessages>;
   noResultsDescription?: string;
