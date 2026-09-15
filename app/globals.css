@@ -11,6 +11,8 @@
   --font-label: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-tertiary: var(--tertiary);
+  --color-home-hero: var(--home-hero);
+  --color-home-product: var(--home-product);
   --color-auth-panel: var(--auth-panel);
   --color-auth-panel-muted: var(--auth-panel-muted);
   --color-auth-surface: var(--auth-surface);
@@ -70,6 +72,8 @@
   --auth-ink: #171925;
   --auth-meter: #e4e6ec;
   --auth-muted: #747b8d;
+  --home-hero: color-mix(in oklch, var(--brand-primary), white 94%);
+  --home-product: color-mix(in oklch, var(--brand-primary), white 96%);
 
   --background: var(--brand-neutral);
   --foreground: var(--brand-secondary);
@@ -118,6 +122,8 @@
     --auth-ink: #f8fafc;
     --auth-meter: #343847;
     --auth-muted: #a7aec0;
+    --home-hero: color-mix(in oklch, var(--brand-secondary), var(--brand-primary) 14%);
+    --home-product: color-mix(in oklch, var(--brand-secondary), white 9%);
 
     --background: var(--brand-secondary);
     --foreground: var(--brand-neutral);
@@ -174,5 +180,30 @@
   h5,
   h6 {
     @apply font-heading;
+  }
+}
+
+@layer components {
+  .home-hero-grid::before {
+    position: absolute;
+    inset: -3rem;
+    z-index: -1;
+    background-image:
+      linear-gradient(to right, color-mix(in oklch, var(--foreground), transparent 95%) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklch, var(--foreground), transparent 95%) 1px, transparent 1px);
+    background-size: 2rem 2rem;
+    mask-image: linear-gradient(to bottom right, black, transparent 72%);
+    content: "";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

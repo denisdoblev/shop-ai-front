@@ -26,7 +26,7 @@ app/
 │   └── _types/Auth.ts            # tipos privados de la feature
 └── (authenticated)/
     ├── layout.tsx                # sidebar y navegación superior
-    ├── page.tsx                  # /
+    ├── page.tsx                  # /, home de descubrimiento basada en catálogo
     ├── assistant/page.tsx        # /assistant
     ├── compare/page.tsx          # /compare
     ├── explore/page.tsx          # /explore
@@ -66,7 +66,7 @@ app/layout.tsx
 │   │   └── /login, /register, /forgot-password
 │   └── /privacy, /terms
 └── app/(authenticated)/layout.tsx
-    ├── /                                      # vuelve a validar la sesión
+    ├── /                                      # home de catálogo; vuelve a validar la sesión
     ├── /explore, /compare, /assistant, /saved, /history
     └── /admin y /admin/*                     # cada page vuelve a validarla
 ```
@@ -119,6 +119,12 @@ El backend devuelve un JWT Bearer en el body y no habilita CORS. Por eso el nave
 Las peticiones de autenticación usan `cache: "no-store"`. La capa servidor acepta las opciones de caché y revalidación de Next para que futuros recursos públicos decidan su política por operación.
 
 ## Flujos implementados
+
+### Home de catálogo
+
+`/` es la entrada de descubrimiento del catálogo dentro de la carcasa autenticada. Después de repetir el guard de sesión, renderiza inmediatamente el hero y transmite de forma independiente las primeras seis categorías y los primeros tres productos detrás de límites `Suspense` con `Skeleton`. Cada producto se enriquece en paralelo con su primera imagen y el registro de precio más reciente; los fallos de imagen o precio conservan el producto con esos datos ausentes, mientras que un fallo del listado se aísla dentro de su sección.
+
+La página y su composición permanecen como Server Components. El único límite cliente propio de la home es `RemoteProductImage`, que intenta mostrar la URL remota del catálogo y cambia al asset local cuando la URL falta o la carga falla. La búsqueda navega a `/assistant` mediante `q`; las categorías y productos usan respectivamente `categoryId` en `/explore` y `productId` en `/compare`. Esas páginas esperan los `searchParams` asíncronos de Next 16, normalizan texto e IDs UUID y usan el valor válido para consultar y presentar el catálogo; un parámetro ausente o inválido muestra un estado orientativo.
 
 ### Navegación y sidebar
 
