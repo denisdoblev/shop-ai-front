@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Check, Package, RotateCw, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, Check, CircleDollarSign, Package, RotateCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useTransition } from "react";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -23,12 +24,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { clientApi } from "@/lib/http/client";
 import { createProduct, updateProduct } from "../actions";
-import { createProductSlug, PRODUCT_NAME_MAX_LENGTH, PRODUCT_SLUG_MAX_LENGTH, productFormSchema } from "../_lib/ProductFormSchema";
-import type { Product, ProductAttribute, ProductFieldErrors, ProductFormValues, ProductOption, ProductSpecifications } from "../_types/Product";
+import { createProductFormSchema, createProductSlug, PRODUCT_NAME_MAX_LENGTH, PRODUCT_PRICE_MAX, PRODUCT_SLUG_MAX_LENGTH, productFormSchema } from "../_lib/ProductFormSchema";
+import type { CreateProductFormValues, Product, ProductAttribute, ProductFieldErrors, ProductFormValues, ProductOption, ProductPrice, ProductSpecifications } from "../_types/Product";
+import { ProductPriceManager } from "./ProductPriceManager";
+
+type FormValues = ProductFormValues & { initialPrice?: number };
 
 type Props = { brands: ProductOption[]; categories: ProductOption[] } & (
-  | { mode: "create"; product?: never; specifications?: never }
-  | { mode: "edit"; product: Product; specifications: ProductSpecifications }
+  | { mode: "create"; prices?: never; product?: never; specifications?: never }
+  | { mode: "edit"; prices: ProductPrice[]; product: Product; specifications: ProductSpecifications }
 );
 const FORM_ID = "product-form";
 const BRAND_ID = "product-brand";
@@ -36,9 +40,9 @@ const BRAND_ERROR_ID = "product-brand-error";
 const CATEGORY_ID = "product-category";
 const CATEGORY_ERROR_ID = "product-category-error";
 
-function applyErrors(errors: ProductFieldErrors | undefined, setError: ReturnType<typeof useForm<ProductFormValues>>["setError"]) {
+function applyErrors(errors: ProductFieldErrors | undefined, setError: ReturnType<typeof useForm<FormValues>>["setError"]) {
   if (!errors) return;
-  for (const name of ["brandId", "categoryId", "description", "model", "name", "slug"] as const) {
+  for (const name of ["brandId", "categoryId", "description", "initialPrice", "model", "name", "slug"] as const) {
     const message = errors[name]?.[0];
     if (message) setError(name, { message, type: "server" });
   }
@@ -49,9 +53,9 @@ export function ProductForm(props: Props) {
   const router = useRouter();
   const slugEdited = useRef(false);
   const [pending, startTransition] = useTransition();
-  const { clearErrors, control, formState: { errors }, handleSubmit, register, setError, setValue } = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
-    defaultValues: create ? { brandId: "", categoryId: "", description: "", model: "", name: "", slug: "", specifications: {} } : {
+  const { clearErrors, control, formState: { errors }, handleSubmit, register, setError, setValue } = useForm<FormValues>({
+    resolver: zodResolver(create ? createProductFormSchema : productFormSchema),
+    defaultValues: create ? { brandId: "", categoryId: "", description: "", initialPrice: undefined, model: "", name: "", slug: "", specifications: {} } : {
       brandId: props.product.brandId, categoryId: props.product.categoryId, description: props.product.description ?? "", model: props.product.model ?? "", name: props.product.name, slug: props.product.slug, specifications: props.specifications,
     },
   });
@@ -67,10 +71,10 @@ export function ProductForm(props: Props) {
   const nameRegistration = register("name");
   const slugRegistration = register("slug");
 
-  function submit(values: ProductFormValues) {
+  function submit(values: FormValues) {
     clearErrors();
     startTransition(async () => {
-      const result = create ? await createProduct(values) : await updateProduct(props.product.id, values);
+      const result = create ? await createProduct(values as CreateProductFormValues) : await updateProduct(props.product.id, values);
       if (result.success) { toast.success(create ? "Producto creado." : "Cambios guardados."); router.push("/admin/products"); router.refresh(); return; }
       if (create && result.productSaved && result.productId) { toast.warning(result.message); router.replace(`/admin/products/${result.productId}/edit`); router.refresh(); return; }
       if (result.productSaved) toast.warning(result.message);
@@ -88,7 +92,8 @@ export function ProductForm(props: Props) {
         <div className="flex gap-3"><Button variant="outline" render={<Link href="/admin/products" />} nativeButton={false}>Cancelar</Button><Button form={FORM_ID} type="submit" disabled={blocked}>{pending ? <Spinner data-icon="inline-start" /> : <Check data-icon="inline-start" />}{create ? "Crear producto" : "Guardar cambios"}</Button></div>
       </div>
       <header className="flex max-w-3xl flex-col gap-2"><p className="font-label text-xs font-bold tracking-[0.14em] text-primary uppercase">Administración / Productos</p><h1 className="text-4xl font-medium tracking-tight">{create ? "Crear producto" : "Editar producto"}</h1><p className="text-muted-foreground">Define su identidad comercial y completa sólo las especificaciones conocidas.</p></header>
-      <form id={FORM_ID} noValidate onSubmit={handleSubmit(submit)} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,.8fr)]">
+      <form id={FORM_ID} noValidate onSubmit={handleSubmit(submit)} className="flex flex-col gap-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,.8fr)]">
         <Card><CardHeader><CardTitle>General</CardTitle><CardDescription>Marca, categoría e información visible del producto.</CardDescription></CardHeader><CardContent><FieldGroup>
           <div className="grid gap-5 sm:grid-cols-2">
             <Controller control={control} name="brandId" render={({ field }) => <Field data-invalid={Boolean(errors.brandId)}><FieldLabel htmlFor={BRAND_ID}>Marca</FieldLabel><Select items={props.brands.map((x) => ({ label: x.name, value: x.id }))} value={field.value} onValueChange={field.onChange} disabled={pending}><SelectTrigger ref={field.ref} id={BRAND_ID} className="w-full" aria-invalid={Boolean(errors.brandId)} aria-describedby={errors.brandId ? BRAND_ERROR_ID : undefined}><SelectValue placeholder="Selecciona una marca" /></SelectTrigger><SelectContent><SelectGroup>{props.brands.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectGroup></SelectContent></Select><FieldError id={BRAND_ERROR_ID}>{errors.brandId?.message}</FieldError></Field>} />
@@ -115,7 +120,10 @@ export function ProductForm(props: Props) {
             return <Controller key={attribute.id} control={control} name={fieldName} render={({ field }) => <Field data-invalid={Boolean(error)}><div className="flex items-center gap-2"><FieldLabel htmlFor={attribute.dataType === "boolean" ? undefined : controlId} id={attribute.dataType === "boolean" ? labelId : undefined}>{attribute.name}</FieldLabel>{attribute.unit ? <Badge variant="secondary">{attribute.unit}</Badge> : null}</div>{attribute.dataType === "boolean" ? <ToggleGroup id={controlId} value={field.value === null || field.value === undefined ? [] : [String(field.value)]} onValueChange={(values) => field.onChange(values[0] === undefined ? null : values[0] === "true")} variant="outline" aria-labelledby={labelId} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}><ToggleGroupItem ref={field.ref} type="button" value="true">Sí</ToggleGroupItem><ToggleGroupItem type="button" value="false">No</ToggleGroupItem></ToggleGroup> : <Input ref={field.ref} id={controlId} type={attribute.dataType === "number" ? "number" : "text"} value={field.value === null || field.value === undefined ? "" : String(field.value)} onChange={(event) => field.onChange(attribute.dataType === "number" ? (event.target.value === "" ? null : event.target.valueAsNumber) : event.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} />}<FieldError id={errorId}>{error?.message}</FieldError></Field>} />;
           })}</FieldGroup></FieldSet> : null}
         </CardContent></Card>
+        </div>
+        {create ? <Card><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>Precio inicial</CardTitle><CardDescription>Importe obligatorio con el que comenzará el histórico.</CardDescription></div><CircleDollarSign className="text-muted-foreground" /></div></CardHeader><CardContent><FieldGroup><Field data-invalid={Boolean(errors.initialPrice)}><FieldLabel htmlFor="product-initial-price">Importe</FieldLabel><InputGroup><InputGroupInput {...register("initialPrice", { setValueAs: (value) => value === "" ? Number.NaN : Number(value) })} id="product-initial-price" type="number" inputMode="decimal" min={0} max={PRODUCT_PRICE_MAX} step="0.01" required autoComplete="off" disabled={pending} aria-invalid={Boolean(errors.initialPrice)} aria-describedby={errors.initialPrice ? "product-initial-price-error" : "product-initial-price-help"} placeholder="0,00" /><InputGroupAddon align="inline-end">USD</InputGroupAddon></InputGroup><FieldDescription id="product-initial-price-help">Se registrará en USD con la hora del servidor después de crear el producto.</FieldDescription><FieldError id="product-initial-price-error">{errors.initialPrice?.message}</FieldError></Field></FieldGroup></CardContent></Card> : null}
       </form>
+      {!create ? <ProductPriceManager prices={props.prices} productId={props.product.id} /> : null}
     </section>
   );
 }

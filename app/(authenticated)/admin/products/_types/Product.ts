@@ -1,9 +1,10 @@
 import type { components } from "@/lib/api/generated";
 import type { z } from "zod";
 
-import type { productFormSchema } from "../_lib/ProductFormSchema";
+import type { createProductFormSchema, productFormSchema, productPriceSchema } from "../_lib/ProductFormSchema";
 
 type GeneratedProduct = components["schemas"]["ProductResponseDto"];
+type GeneratedProductPrice = components["schemas"]["ProductPriceResponseDto"];
 
 export type Product = Omit<GeneratedProduct, "description" | "model"> & {
   description: string | null;
@@ -26,7 +27,10 @@ export type ProductAttribute = {
 export type ProductSpecificationValue = string | number | boolean | null;
 export type ProductSpecifications = Record<string, ProductSpecificationValue>;
 export type ProductFormValues = z.infer<typeof productFormSchema>;
-export type ProductFieldErrors = Partial<Record<keyof ProductFormValues, string[]>>;
+export type CreateProductFormValues = z.infer<typeof createProductFormSchema>;
+export type ProductPriceFormValues = z.infer<typeof productPriceSchema>;
+export type ProductPrice = GeneratedProductPrice;
+export type ProductFieldErrors = Partial<Record<keyof CreateProductFormValues, string[]>>;
 export type ProductMutationResult =
   | { success: true }
   | {
@@ -35,5 +39,12 @@ export type ProductMutationResult =
       productId?: string;
       productSaved?: boolean;
       specificationErrors?: Record<string, string>;
+      success: false;
+    };
+export type ProductPriceMutationResult =
+  | { success: true }
+  | {
+      fieldErrors?: Partial<Record<keyof ProductPriceFormValues, string[]>>;
+      message: string;
       success: false;
     };

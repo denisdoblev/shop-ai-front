@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { updateProduct } from "./actions";
+import { HttpError, NetworkError } from "@/lib/http/errors";
+import { createProduct, registerProductPrice, updateProduct } from "./actions";
 
 const mocks = vi.hoisted(() => ({
   authenticatedServerRequest: vi.fn(),
@@ -50,6 +51,76 @@ describe("product mutations", () => {
     mocks.requireAuthenticatedUser.mockResolvedValue({ id: "user-1" });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("creates the initial USD price with the server time", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-15T12:34:56.000Z"));
+    mockTemplate();
+    mocks.authenticatedServerRequest
+      .mockResolvedValueOnce({ id: productId })
+      .mockResolvedValueOnce({ id: "price-1" });
+
+    await expect(createProduct({ ...values, initialPrice: 0 })).resolves.toEqual({ success: true });
+
+    expect(mocks.authenticatedServerRequest).toHaveBeenCalledWith("/api/products", {
+      body: {
+        brandId,
+        categoryId,
+        description: null,
+        model: null,
+        name: "Cámara Pro",
+        slug: "camara-pro",
+      },
+      method: "POST",
+    });
+    expect(mocks.authenticatedServerRequest).toHaveBeenCalledWith(
+      `/api/products/${productId}/prices`,
+      {
+        body: {
+          currency: "USD",
+          price: 0,
+          recordedAt: "2026-09-15T12:34:56.000Z",
+        },
+        method: "POST",
+      },
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/admin/products/${productId}/edit`);
+  });
+
+  it("keeps the created product when its initial price fails", async () => {
+    mockTemplate();
+    mocks.authenticatedServerRequest
+      .mockResolvedValueOnce({ id: productId })
+      .mockRejectedValueOnce(new NetworkError(new TypeError("offline")));
+
+    await expect(createProduct({ ...values, initialPrice: 99.9 })).resolves.toEqual({
+      message: "El producto se creó, pero el precio inicial no se guardó. Puedes reintentarlo desde la edición.",
+      productId,
+      productSaved: true,
+      specificationErrors: {},
+      success: false,
+    });
+  });
+
+  it("reports a combined warning when price and specifications fail", async () => {
+    mockTemplate();
+    mocks.authenticatedServerRequest
+      .mockResolvedValueOnce({ id: productId })
+      .mockRejectedValueOnce(new Error("specification failed"))
+      .mockRejectedValueOnce(new Error("price failed"));
+
+    await expect(createProduct({ ...values, initialPrice: 99.9, specifications: { [currentAttributeId]: "4K" } })).resolves.toEqual({
+      message: "El producto se creó, pero el precio inicial y algunas especificaciones no se guardaron. Puedes reintentarlos desde la edición.",
+      productId,
+      productSaved: true,
+      specificationErrors: { [currentAttributeId]: "No se pudo sincronizar esta especificación." },
+      success: false,
+    });
+  });
+
   it("updates the category while ignoring submitted values from its previous template", async () => {
     mockTemplate();
     mocks.authenticatedServerRequest
@@ -76,6 +147,10 @@ describe("product mutations", () => {
         },
         method: "PATCH",
       },
+    );
+    expect(mocks.authenticatedServerRequest).not.toHaveBeenCalledWith(
+      expect.stringContaining("/prices"),
+      expect.anything(),
     );
   });
 
@@ -119,5 +194,46 @@ describe("product mutations", () => {
       `/api/products/${productId}`,
       expect.objectContaining({ method: "PATCH" }),
     );
+  });
+
+  it("registers an independent USD price and revalidates only the edit page", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-15T18:00:00.000Z"));
+    mocks.authenticatedServerRequest.mockResolvedValueOnce({ id: "price-2" });
+
+    await expect(registerProductPrice(productId, { price: 1250.5 })).resolves.toEqual({ success: true });
+
+    expect(mocks.requireAuthenticatedUser).toHaveBeenCalledOnce();
+    expect(mocks.authenticatedServerRequest).toHaveBeenCalledWith(`/api/products/${productId}/prices`, {
+      body: { currency: "USD", price: 1250.5, recordedAt: "2026-09-15T18:00:00.000Z" },
+      method: "POST",
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledTimes(1);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/admin/products/${productId}/edit`);
+  });
+
+  it.each([
+    [400, "La API rechazó el importe. Revísalo e inténtalo de nuevo."],
+    [401, "Tu sesión ha caducado. Recarga la página."],
+    [403, "Tu cuenta no tiene permiso para registrar precios."],
+    [404, "El producto ya no existe."],
+    [409, "El precio entra en conflicto con un registro existente. Actualiza la página e inténtalo de nuevo."],
+  ])("translates price HTTP %i errors", async (status, message) => {
+    mocks.authenticatedServerRequest.mockRejectedValueOnce(new HttpError(new Response(null, { status }), undefined));
+    await expect(registerProductPrice(productId, { price: 10 })).resolves.toEqual({ message, success: false });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("translates price network errors", async () => {
+    mocks.authenticatedServerRequest.mockRejectedValueOnce(new NetworkError(new TypeError("offline")));
+    await expect(registerProductPrice(productId, { price: 10 })).resolves.toEqual({
+      message: "No se pudo conectar con el servicio. Inténtalo de nuevo.",
+      success: false,
+    });
+  });
+
+  it("validates price before sending it", async () => {
+    await expect(registerProductPrice(productId, { price: 1.001 })).resolves.toMatchObject({ success: false });
+    expect(mocks.authenticatedServerRequest).not.toHaveBeenCalled();
   });
 });
