@@ -23,6 +23,7 @@ export function RemoteProductImage({ alt, src }: RemoteProductImageProps) {
       fill
       unoptimized
       alt={alt}
+      className="object-cover"
       loader={passthroughLoader}
       onError={() => setFailed(true)}
       sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"

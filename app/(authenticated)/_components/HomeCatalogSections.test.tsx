@@ -5,6 +5,7 @@ import { loadFeaturedProducts, loadHomeCategories } from "../_lib/home-catalog";
 import { HomeCategoriesSection, HomeProductsSection } from "./HomeCatalogSections";
 
 vi.mock("../_lib/home-catalog", () => ({ loadFeaturedProducts: vi.fn(), loadHomeCategories: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 const categoriesMock = vi.mocked(loadHomeCategories);
 const productsMock = vi.mocked(loadFeaturedProducts);
 afterEach(cleanup);
@@ -21,9 +22,10 @@ describe("HomeCatalogSections", () => {
     expect(screen.getByText("No pudimos cargar las categorías")).toBeInTheDocument();
   });
   it("conserva productos cuando su enriquecimiento fue parcial", async () => {
-    productsMock.mockResolvedValueOnce({ hasPartialFailure: true, items: [{ currency: null, description: null, id: "product", imageUrl: null, model: null, name: "Auriculares", price: null }] });
+    productsMock.mockResolvedValueOnce({ hasPartialFailure: true, items: [{ currency: null, description: null, id: "product", imageUrl: "https://cdn.example/auriculares.jpg", model: null, name: "Auriculares", price: null }] });
     render(await HomeProductsSection());
     expect(screen.getByText("Algunos detalles no están disponibles")).toBeInTheDocument();
     expect(screen.getByText("Auriculares")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Auriculares" })).toHaveAttribute("src", "https://cdn.example/auriculares.jpg");
   });
 });
