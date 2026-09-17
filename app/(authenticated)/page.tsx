@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   await requireAuthenticatedUser();
+
   return (
     <HomeContent>
       <Suspense fallback={<HomeCategoriesSkeleton />}>

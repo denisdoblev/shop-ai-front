@@ -1,8 +1,6 @@
 "use client";
 
-import { Check, Scale } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +12,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
+import { MAX_COMPARE_PRODUCTS } from "../_lib/discovery-search-params";
+import { useCompare } from "../_providers/CompareProvider";
 import type { FeaturedProduct } from "../_types/Home";
 import { RemoteProductImage } from "./RemoteProductImage";
-
-export const MAX_COMPARE_PRODUCTS = 4;
 
 type FeaturedProductsGridProps = {
   products: FeaturedProduct[];
@@ -37,34 +34,16 @@ export function formatProductPrice(product: FeaturedProduct): string | null {
   }
 }
 
-function compareUrl(productIds: string[]) {
-  const searchParams = new URLSearchParams();
-  productIds.forEach((productId) => searchParams.append("productId", productId));
-  return `/compare?${searchParams.toString()}`;
-}
-
 export function FeaturedProductsGrid({ products }: FeaturedProductsGridProps) {
-  const router = useRouter();
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-  const selectedProductIdSet = new Set(selectedProductIds);
-  const selectionIsFull = selectedProductIds.length === MAX_COMPARE_PRODUCTS;
-  const canCompare = selectedProductIds.length >= 2;
-
-  function toggleProduct(productId: string) {
-    setSelectedProductIds((current) => {
-      if (current.includes(productId)) {
-        return current.filter((selectedId) => selectedId !== productId);
-      }
-
-      return current.length < MAX_COMPARE_PRODUCTS ? [...current, productId] : current;
-    });
-  }
+  const { products: selectedProducts, toggle } = useCompare();
+  const selectedProductIdSet = new Set(selectedProducts.map(({ id }) => id));
+  const selectionIsFull = selectedProducts.length === MAX_COMPARE_PRODUCTS;
 
   return (
     <div
       className={cn(
         "flex flex-col gap-4",
-        selectedProductIds.length > 0 ? "pb-40 sm:pb-28" : null,
+        selectedProducts.length > 0 && "pb-40 sm:pb-28",
       )}
       data-slot="featured-products-grid"
     >
@@ -96,7 +75,7 @@ export function FeaturedProductsGrid({ products }: FeaturedProductsGridProps) {
                   aria-pressed={isSelected}
                   className="w-full"
                   disabled={!isSelected && selectionIsFull}
-                  onClick={() => toggleProduct(product.id)}
+                  onClick={() => toggle({ id: product.id, name: product.name })}
                   type="button"
                   variant={isSelected ? "secondary" : "outline"}
                 >
@@ -108,38 +87,6 @@ export function FeaturedProductsGrid({ products }: FeaturedProductsGridProps) {
           );
         })}
       </div>
-
-      {selectedProductIds.length > 0 ? (
-        <aside
-          aria-label="Selección para comparar"
-          className="pointer-events-none fixed inset-x-4 bottom-4 z-30 flex justify-center sm:bottom-6"
-        >
-          <div className="pointer-events-auto w-full max-w-2xl rounded-xl border bg-background/95 p-4 shadow-xl backdrop-blur-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <p aria-live="polite" className="font-medium" role="status">
-                  {selectedProductIds.length === 1
-                    ? "1 de 4 seleccionado"
-                    : `${selectedProductIds.length} de 4 seleccionados`}
-                </p>
-                {selectedProductIds.length === 1 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Agregá otro producto para habilitar la comparación.
-                  </p>
-                ) : null}
-              </div>
-              <Button
-                disabled={!canCompare}
-                onClick={() => router.push(compareUrl(selectedProductIds))}
-                type="button"
-              >
-                <Scale data-icon="inline-start" />
-                Comparar ahora
-              </Button>
-            </div>
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 }
