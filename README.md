@@ -1,6 +1,6 @@
 # ShopAI Frontend
 
-Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar con un asistente y administrar el catálogo. El registro y el login están integrados con el backend mediante un BFF mínimo de Next.js; el grupo `(authenticated)` valida la sesión en su layout y en cada página protegida, aunque la mayoría de las páginas de producto todavía son placeholders.
+Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar con un asistente y administrar el catálogo. Explore, favoritos y comparación consumen datos reales. El registro y el login están integrados con el backend mediante BFFs mínimos de Next.js; el grupo `(authenticated)` valida la sesión en su layout y en cada página protegida.
 
 ## Stack
 

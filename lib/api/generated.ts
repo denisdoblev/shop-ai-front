@@ -212,6 +212,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/products/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search products with facets and pagination */
+        get: operations["ProductsController_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/products/{id}": {
         parameters: {
             query?: never;
@@ -298,6 +315,41 @@ export interface paths {
         /** Record a new product price */
         post: operations["ProductPricesController_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List favorites for the authenticated user */
+        get: operations["FavoritesController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/favorites/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Create or restore a product favorite */
+        put: operations["FavoritesController_put"];
+        post?: never;
+        /** Remove a product favorite */
+        delete: operations["FavoritesController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -519,6 +571,67 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ProductSearchReferenceDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        ProductSearchImageDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uri */
+            url: string;
+            altText?: string | null;
+        };
+        ProductSearchPriceDto: {
+            /** @example 1299.99 */
+            price: number;
+            /** @example USD */
+            currency: string;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ProductSearchItemDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            model?: string | null;
+            description?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            brand: components["schemas"]["ProductSearchReferenceDto"];
+            category: components["schemas"]["ProductSearchReferenceDto"];
+            image?: components["schemas"]["ProductSearchImageDto"] | null;
+            price?: components["schemas"]["ProductSearchPriceDto"] | null;
+        };
+        ProductSearchFacetDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            count: number;
+        };
+        ProductSearchPriceFacetDto: {
+            /** @enum {string} */
+            id: "<500" | "500-999.99" | "1000-1499.99" | ">=1500";
+            label: string;
+            count: number;
+        };
+        ProductSearchFacetsDto: {
+            categories: components["schemas"]["ProductSearchFacetDto"][];
+            prices: components["schemas"]["ProductSearchPriceFacetDto"][];
+            features: components["schemas"]["ProductSearchFacetDto"][];
+        };
+        ProductSearchPaginationDto: {
+            limit: number;
+            offset: number;
+            total: number;
+        };
+        ProductSearchResponseDto: {
+            items: components["schemas"]["ProductSearchItemDto"][];
+            facets: components["schemas"]["ProductSearchFacetsDto"];
+            pagination: components["schemas"]["ProductSearchPaginationDto"];
+        };
         UpdateProductDto: {
             /** Format: uuid */
             brandId?: string;
@@ -599,6 +712,16 @@ export interface components {
              * @example 2026-08-29T20:00:00Z
              */
             recordedAt: string;
+        };
+        FavoriteResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
     };
     responses: never;
@@ -1661,6 +1784,46 @@ export interface operations {
             };
         };
     };
+    ProductsController_search: {
+        parameters: {
+            query?: {
+                /** @description Limit */
+                limit?: components["schemas"]["Object"];
+                /** @description Offset */
+                offset?: components["schemas"]["Object"];
+                /** @description Case-insensitive product, model, or brand search */
+                q?: string;
+                /** @description Repeated category IDs. Descendants are included. */
+                categoryId?: string[];
+                /** @description Repeated USD price bands combined with OR. */
+                priceRange?: ("<500" | "500-999.99" | "1000-1499.99" | ">=1500")[];
+                /** @description Repeated boolean attribute IDs combined with AND. */
+                featureId?: string[];
+                sort?: "relevance" | "name-asc" | "name-desc" | "price-asc" | "price-desc" | "newest";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSearchResponseDto"];
+                };
+            };
+            /** @description Invalid search parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ProductsController_findOne: {
         parameters: {
             query?: never;
@@ -2171,6 +2334,117 @@ export interface operations {
             };
             /** @description Price timestamp already active for product */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FavoritesController_findAll: {
+        parameters: {
+            query?: {
+                productId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FavoriteResponseDto"][];
+                };
+            };
+            /** @description Invalid product ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FavoritesController_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FavoriteResponseDto"];
+                };
+            };
+            /** @description Invalid product ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FavoritesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Favorite removed or already absent */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid product ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
