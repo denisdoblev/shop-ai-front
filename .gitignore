@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent tooling and generated knowledge graph
+/.codex/
+/graphify-out/
