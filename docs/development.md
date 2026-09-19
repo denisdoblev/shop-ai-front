@@ -6,7 +6,7 @@
 - Framework: Next.js 16.3.4.
 - TypeScript 5, React 19 y Tailwind CSS 4 según `package.json`.
 
-El repositorio no contiene `.nvmrc`, `.node-version` ni campo `engines`; por lo tanto no hay una versión de Node formalmente definida. No deducirla de `@types/node` ni del entorno local de una sesión.
+El repositorio no contiene `.nvmrc`, `.node-version` ni campo `engines`, por lo que no fija una versión exacta de Node. La versión instalada de Next exige Node `>=20.9.0`; `@types/node` no define el runtime.
 
 ## Instalación y ejecución
 
@@ -22,10 +22,10 @@ Para probar el artefacto de producción:
 
 ```bash
 pnpm build
-pnpm start
+pnpm exec next start --port 3001
 ```
 
-`pnpm start` requiere haber generado antes el build.
+El servidor de producción requiere haber generado antes el build. El script `pnpm start` ejecuta `next start` sin puerto explícito y por defecto intenta usar el `3000`; si el backend local sigue activo allí, iniciá Next con el comando anterior para evitar la colisión.
 
 ## Validaciones disponibles
 
@@ -64,6 +64,7 @@ Vitest usa `jsdom` y carga `test/setup.ts`. Las pruebas se colocan junto al arch
 | `eslint.config.mjs` | flat config de ESLint para Next y TypeScript |
 | `next.config.ts` | configuración Next actualmente vacía |
 | `postcss.config.mjs` | plugin `@tailwindcss/postcss` |
+| `vitest.config.mts`, `test/setup.ts` | entorno `jsdom`, alias de tests y matchers de Testing Library |
 | `components.json` | configuración de shadcn y destinos de componentes |
 | `app/globals.css` | imports Tailwind/shadcn, tema y tokens globales |
 

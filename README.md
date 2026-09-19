@@ -8,7 +8,7 @@ Interfaz web de ShopAI para explorar, comparar y guardar productos, conversar co
 - React 19 y TypeScript estricto
 - Tailwind CSS 4
 - shadcn/ui sobre Base UI
-- React Hook Form y Zod en la interfaz de autenticación
+- React Hook Form y Zod en formularios de autenticación y administración
 - TanStack Query para server state en componentes cliente
 - pnpm 11.22.0
 

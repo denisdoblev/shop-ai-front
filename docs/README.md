@@ -26,9 +26,9 @@ Las propuestas se documentan sólo para evitar que un agente las presente como d
 
 - La estructura de navegación principal y administrativa está definida en `components/AppSidebar/AppSidebar.tsx`.
 - `/login` y `/register` tienen una interfaz compartida, validación en cliente e integración real con el backend bajo `app/(auth)/`.
-- `/`, `/explore` y `/compare` usan catálogo real dentro de la carcasa con sidebar; `/assistant`, `/saved` y `/history` conservan sus estados actuales. La administración de catálogo está integrada con el backend.
+- `/`, `/explore` y `/compare` usan catálogo real dentro de la carcasa con sidebar; `/assistant` ofrece una búsqueda inicial sobre ese catálogo, mientras `/saved` y `/history` siguen como placeholders. La administración de brands, categorías, atributos y productos está integrada con el backend; el overview y las plantillas administrativas siguen pendientes.
 - La autenticación usa Route Handlers same-origin, TanStack Query y una cookie JWT `HttpOnly`; el layout de invitados y tanto el layout como cada página protegida validan esa sesión contra el backend.
 - La capa HTTP tipada soporta consumo server/client y sus contratos se generan desde OpenAPI.
-- Existe una suite Vitest para HTTP, BFF y formularios.
+- Existe una suite Vitest para HTTP, autenticación, BFF, loaders, providers, páginas y formularios.
 
 No hay evidencia suficiente para crear ADRs ni guías separadas de backend o acceso a datos.

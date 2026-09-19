@@ -27,6 +27,10 @@ app/
 └── (authenticated)/
     ├── layout.tsx                # sidebar y navegación superior
     ├── page.tsx                  # /, home de descubrimiento basada en catálogo
+    ├── _components/              # UI compartida por las rutas protegidas
+    ├── _lib/                     # loaders y parsers de descubrimiento
+    ├── _providers/               # selección global de comparación
+    ├── _types/                   # modelos serializables de home
     ├── assistant/page.tsx        # /assistant
     ├── compare/page.tsx          # /compare
     ├── explore/page.tsx          # /explore
@@ -36,14 +40,15 @@ app/
         ├── brands/               # listado, /new y /[id]/edit
         ├── categories/           # listado jerárquico, /new, /[id]/edit y acciones
         ├── attributes/           # listado, /new, /[id]/edit y acciones tipadas
-        └── products/             # listado filtrable, /new, /[id]/edit y especificaciones
+        ├── products/             # listado filtrable, /new, /[id]/edit, precios y especificaciones
+        └── templates/page.tsx    # /admin/templates (placeholder)
 components/
 ├── AppSidebar/                   # navegación lateral de producto
 ├── CrudTable/                    # tabla CRUD genérica con búsqueda, acciones y paginación
 │   └── _types/types.ts           # contratos tipados internos de la tabla
 ├── TopNavigation/                # barra superior de producto
 └── ui/                           # primitivas shadcn instaladas como código fuente
-hooks/use-mobile.ts               # detección responsive usada por Sidebar
+hooks/                            # hooks compartidos de responsive y sesión
 lib/utils.ts                      # reexport de cn
 lib/http/                         # fetch tipado y clientes server/client
 lib/api/generated.ts             # contrato generado desde OpenAPI
@@ -51,7 +56,8 @@ lib/auth/                         # services de auth, sesión y helpers BFF
 lib/query/                        # QueryClient y query keys
 app/api/auth/                     # BFF de login, registro, sesión y logout
 app/api/admin/categories/[id]/attributes/ # BFF autenticado de plantillas
-public/                           # assets estáticos heredados de create-next-app
+app/api/favorites/[productId]/    # BFF autenticado para mutar favoritos
+public/                           # assets estáticos, incluido el hero del catálogo
 proxy.ts                          # propaga la URL solicitada a los guards
 ```
 
@@ -85,7 +91,7 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 - `components/AppSidebar/AppSidebar.tsx` usa `usePathname()` para marcar navegación activa.
 - `app/(auth)/_components/AuthForm.tsx` usa React Hook Form.
-- Los formularios de `brands` y `categories` usan React Hook Form para validación, preview y mutaciones; sus listados delegan la interacción a Client Components pequeños.
+- Los formularios de `brands`, `categories`, `attributes` y `products` usan React Hook Form para validación, preview y mutaciones; sus listados delegan la interacción a Client Components pequeños.
 - `app/(auth)/_components/PasswordField.tsx` usa `useState()`.
 - varias primitivas de `components/ui/` declaran `"use client"` por depender de Base UI, contexto o hooks.
 
@@ -100,7 +106,7 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 | `app/(auth)/_components` | componentes exclusivos de autenticación | `AuthForm.tsx`, `AuthShell.tsx`, `PasswordField.tsx`, `TextField.tsx` |
 | `components/AppSidebar`, `components/TopNavigation` | componentes de producto compartidos entre rutas | `components/AppSidebar/AppSidebar.tsx`, `components/TopNavigation/TopNavigation.tsx` |
 | `components/ui` | primitivas shadcn/Base UI reutilizables | `button.tsx`, `field.tsx`, `sidebar.tsx` |
-| `hooks` | hooks compartidos | `hooks/use-mobile.ts` |
+| `hooks` | hooks compartidos | `hooks/use-mobile.ts`, `hooks/use-session.ts` |
 | `lib/http`, `lib/api`, `lib/auth`, `lib/query` | HTTP compartido, contrato OpenAPI, sesión y server state | `lib/http/request.ts`, `lib/api/generated.ts` |
 
 `lib/http/request.ts` implementa la base sobre `fetch`; `lib/http/server.ts` resuelve la URL privada del backend y `lib/http/client.ts` consume URLs relativas same-origin. `lib/api/generated.ts` se genera desde Swagger y no se edita manualmente. `AuthFormSchema.ts` sigue siendo validación de interfaz, no un DTO mantenido a mano.
@@ -109,9 +115,9 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 ```text
 Server Component ── lib/http/server ──────────────> backend
-Client Component ── TanStack Query ──> /api/auth/* ──> backend
-                                           │
-                                           └── cookie shopai_session HttpOnly
+Client Component ── TanStack Query/BFF ──> /api/auth/*, /api/favorites/*, /api/admin/* ──> backend
+                                                 │
+                                                 └── cookie shopai_session HttpOnly
 ```
 
 El backend devuelve un JWT Bearer en el body y no habilita CORS. Por eso el navegador no lo llama directamente: los Route Handlers de autenticación guardan el token en una cookie `HttpOnly`, devuelven sólo el perfil seguro y trasladan los errores HTTP sin revelar secretos. El Proxy no actúa como proxy HTTP ni maneja el JWT. El helper `authenticatedServerRequest` añade el Bearer desde la cookie sólo en código servidor y mantiene esa dependencia separada del cliente HTTP general.
@@ -191,10 +197,10 @@ El submit usa `useLogin` o `useRegister`. Registro transforma nombre y apellidos
 
 ## Áreas todavía no definidas
 
-- autorización por roles y protección de operaciones de datos;
-- modelo de datos del catálogo fuera de los contratos actuales de brands y categorías;
-- estado global de aplicación fuera del server state administrado por TanStack Query;
-- despliegue y variables de entorno;
-- límites de dominio entre administración, catálogo y asistente.
+- presentación y restricción de rutas administrativas según los roles del usuario; las mutaciones administrativas de catálogo ya dependen de la autorización `ADMIN` aplicada por el backend;
+- experiencia persistente del asistente, historial de conversaciones y pantalla de productos guardados;
+- destino de despliegue y gestión de variables de entorno de producción; en desarrollo sólo se define `BACKEND_URL`;
+- límites de dominio de largo plazo entre administración, descubrimiento, comparación y asistente;
+- una solución general de estado cliente: hoy sólo existe el contexto específico de comparación, persistido por usuario en `localStorage`.
 
 El backend no expone refresh token ni revocación/logout. El logout del frontend sólo elimina la cookie local, y “Recuérdame” nunca extiende las dos horas de vigencia del JWT.

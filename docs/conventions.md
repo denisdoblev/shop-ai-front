@@ -14,7 +14,7 @@ Las relaciones anidadas sin endpoint de reemplazo —asignaciones de categoría 
 - Los route groups separan experiencias sin alterar la URL: `(auth)` para la superficie pública, su grupo `(guest)` para login, registro y recuperación exclusivos de invitados, y `(authenticated)` para la carcasa protegida. Evidencia: sus respectivos layouts y las rutas `privacy` y `terms` fuera de `(guest)`.
 - Las carpetas internas colocadas junto a una feature llevan prefijo `_`, como `_components`, `_hooks`, `_lib` y `_types`. En `app/`, este prefijo también las excluye explícitamente del sistema de rutas de Next.js; se conserva la misma señal en componentes compartidos cuando la carpeta no forma parte de su API pública.
 - El layout `(guest)`, el layout `(authenticated)` y cada página protegida validan `shopai_session` contra `GET /api/auth/check-status`; las páginas repiten el guard porque los layouts persisten durante navegaciones cliente. `getCurrentUser()` memoiza el resultado dentro de un render de servidor para evitar consultas duplicadas. No se considera autenticado a quien sólo presenta una cookie y `proxy.ts` nunca sustituye la comprobación segura.
-- Las páginas y layouts se exportan por defecto. Evidencia: `app/(auth)/(guest)/register/page.tsx`, `app/(auth)/layout.tsx` y todas las páginas placeholder de `app/(authenticated)/`.
+- Las páginas y layouts se exportan por defecto. Evidencia: `app/(auth)/(guest)/register/page.tsx`, `app/(auth)/layout.tsx` y las páginas bajo `app/(authenticated)/`.
 
 ### TypeScript e imports
 
@@ -72,15 +72,15 @@ Estos patrones orientan cambios pequeños, pero la evidencia todavía no basta p
 
 ### Colocación por feature
 
-La feature de autenticación coloca UI privada en `_components`, lógica de validación en `_lib` y tipos en `_types`, todo bajo `app/(auth)`. Es el ejemplo más completo disponible, pero es una sola feature. Puede reutilizarse para una feature estrictamente ligada a una ruta; no obliga a migrar los componentes compartidos de raíz ni define cómo organizar servicios futuros.
+Las features ligadas a una ruta colocan UI privada en `_components`, loaders, parsers y validación en `_lib`, y modelos propios en `_types`. El patrón aparece en autenticación, home, Explore, Compare y los mantenimientos de brands, categorías, atributos y productos. Los providers exclusivos de la carcasa protegida viven en `_providers`. La frontera exacta sigue dependiendo de cada feature: no obliga a mover componentes compartidos de `components/` ni los concerns transversales de `lib/`.
 
 ### Nombres
 
 - Los componentes de producto y autenticación usan PascalCase tanto en símbolo como en archivo: `AuthForm.tsx`, `AuthShell.tsx`, `AppSidebar.tsx`, `TopNavigation.tsx`.
 - Los componentes reutilizables usan predominantemente exports nombrados (`AuthForm`, `AuthShell`, `AppSidebar`, `TopNavigation`); `Logo.tsx` es la excepción con export default.
 - Las primitivas instaladas por shadcn usan archivos kebab-case o minúsculos: `input-group.tsx`, `navigation-menu.tsx`, `button.tsx`.
-- Los hooks compartidos usan prefijo `use` y archivo kebab-case: `hooks/use-mobile.ts` exporta `useIsMobile`.
-- Los schemas y tipos de autenticación están en archivos PascalCase (`AuthFormSchema.ts`, `Auth.ts`), pero sólo existe un ejemplo de cada uno.
+- Los hooks compartidos usan prefijo `use` y archivo kebab-case: `hooks/use-mobile.ts` exporta `useIsMobile` y `hooks/use-session.ts` exporta `useSession`/`useLogout`.
+- Los schemas y tipos colocados junto a features usan predominantemente PascalCase, por ejemplo `AuthFormSchema.ts`, `ProductFormSchema.ts`, `Auth.ts` y `Product.ts`.
 
 No renombrar archivos existentes para uniformarlos sin una decisión explícita.
 
@@ -92,7 +92,7 @@ Evidencia: `app/(auth)/_components/AuthForm.tsx`, `app/(auth)/_lib/AuthFormSchem
 
 Los formularios de autenticación usan hooks de mutación de TanStack Query, deshabilitan el submit mientras está pendiente y traducen errores remotos a errores de campo o formulario. Los schemas Zod validan la interfaz; los DTOs TypeScript provienen de OpenAPI.
 
-Los formularios administrativos de brands, categorías y atributos conservan React Hook Form y Zod en el límite cliente, vuelven a validar el mismo schema dentro de sus Server Actions y usan `useTransition` para el estado pendiente. Las respuestas esperadas de la acción separan errores por campo del mensaje general; los éxitos usan el toaster global y vuelven al listado. Los conjuntos breves de opciones usan `ToggleGroup`; en atributos, el tipo se elige al crear y queda bloqueado durante la edición.
+Los formularios administrativos de brands, categorías, atributos y productos conservan React Hook Form y Zod en el límite cliente, vuelven a validar el mismo schema dentro de sus Server Actions y usan `useTransition` para el estado pendiente. Las respuestas esperadas de la acción separan errores por campo del mensaje general; los éxitos usan el toaster global y vuelven al listado o continúan en edición cuando una sincronización queda parcial. Los conjuntos breves de opciones usan `ToggleGroup`; en atributos, el tipo se elige al crear y queda bloqueado durante la edición.
 
 ### Imports
 
@@ -104,25 +104,25 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 | --- | --- | --- |
 | Punto y coma | autenticación y layouts recientes los usan; `components/ui/*`, `AppSidebar.tsx`, `TopNavigation.tsx` y `use-mobile.ts` suelen omitirlos | conservar el estilo del archivo tocado; no reformatear en masa |
 | Export default de componentes | páginas/layouts lo requieren y `Logo.tsx` también lo usa; los demás componentes de producto son exports nombrados | no inferir una prohibición absoluta; preferir export nombrado para nuevos componentes reutilizables hasta que se decida |
-| Imports de `cn` | las primitivas importan desde el paquete `cn`; `lib/utils.ts` reexporta `cn`, pero actualmente no tiene consumidores | no asumir que `@/lib/utils` es el único camino establecido |
-| Colores | existen tokens semánticos en `globals.css`, pero `AuthShell.tsx` y `PasswordField.tsx` contienen varios colores y sombras literales | reutilizar tokens cuando existan; no hacer una limpieza global sin alcance explícito |
+| Imports de `cn` | las primitivas shadcn importan desde el paquete `cn`; componentes de producto como `CrudTable`, Home y Explore usan el reexport `@/lib/utils` | conservar el camino propio del área; no normalizar imports en masa |
+| Colores | existen tokens semánticos en `globals.css`, pero `AuthShell.tsx` conserva varios colores literales | reutilizar tokens cuando existan; no hacer una limpieza global sin alcance explícito |
 | Idioma visible | metadata y autenticación están en español; sidebar y páginas placeholder están en inglés | no hay política de localización definida; mantener coherencia con la pantalla modificada |
-| Estado de páginas | autenticación tiene componentes y validación; las rutas principales y administrativas son mayormente placeholders | no usar los placeholders como ejemplo de arquitectura de feature completa |
+| Estado de páginas | Home, Explore, Compare y los CRUD administrativos principales están implementados; `/assistant` es parcial y `/saved`, `/history`, `/admin` y `/admin/templates` siguen como placeholders | distinguir una pantalla incompleta de los flujos que ya establecen arquitectura |
 
 ## Dónde implementar
 
 - **Nueva URL:** crear su segmento y `page.tsx` bajo el route group cuyo layout corresponda. Una pantalla pública no debe entrar en `(authenticated)` sólo por conveniencia visual.
-- **UI exclusiva de una ruta o grupo:** colocarla junto a la feature; el precedente disponible es `_components` dentro de `(auth)`.
+- **UI exclusiva de una ruta o grupo:** colocarla junto a la feature en `_components`; hay precedentes en autenticación, descubrimiento, comparación y administración.
 - **Componente de producto reutilizado por varias rutas:** usar `components/<Nombre>/<Nombre>.tsx`, siguiendo `AppSidebar` y `TopNavigation`.
 - **Primitiva de diseño genérica:** revisar primero `components/ui/` y `components.json`. Si se incorpora una primitiva shadcn, se agrega como código fuente a `components/ui/`; no mezclarla con reglas de dominio.
-- **Hook realmente compartido:** usar `hooks/`; hoy sólo existe `use-mobile.ts`.
-- **Utilidad transversal:** usar `lib/` sólo cuando sea compartida; hoy contiene únicamente el reexport de `cn`.
-- **Schema/tipos exclusivos de autenticación:** mantenerlos en `app/(auth)/_lib` y `app/(auth)/_types`. Para otros dominios, este esquema es una referencia emergente, no una obligación.
+- **Hook realmente compartido:** usar `hooks/`; hoy contiene `use-mobile.ts` y `use-session.ts`.
+- **Utilidad transversal:** usar `lib/` cuando sea compartida. `lib/http`, `lib/api`, `lib/auth` y `lib/query` tienen responsabilidades específicas; `lib/utils.ts` conserva utilidades generales.
+- **Schema/tipos exclusivos de una feature:** mantenerlos en sus carpetas `_lib` y `_types` junto a la ruta, como hacen autenticación y los mantenimientos administrativos.
 - **Endpoint o acceso a datos:** reutilizar `lib/http`; colocar contratos generados en `lib/api`, concerns de sesión en `lib/auth` y Route Handlers explícitos bajo `app/api` sólo cuando el navegador necesite el BFF.
 
 ## Patrones que no están establecidos
 
-No hay evidencia de barrel files (`index.ts`), gestores de estado global general, ORM ni internacionalización. El Proxy existente tiene el único alcance de propagar la URL solicitada; no ampliarlo a un proxy HTTP genérico.
+No hay evidencia de barrel files (`index.ts`), un gestor general de estado cliente, ORM ni internacionalización. `CompareProvider` es contexto específico de la selección de productos, no una decisión de estado global para toda la aplicación. El Proxy existente tiene el único alcance de propagar la URL solicitada; no ampliarlo a un proxy HTTP genérico.
 
 ## Propuestas pendientes de decisión
 
@@ -131,7 +131,7 @@ Las siguientes ideas **no son reglas actuales**:
 - adoptar un formatter y fijar punto y coma, comillas y orden de imports;
 - convertir colores literales repetidos en tokens semánticos;
 - fijar el idioma de producto o incorporar una estrategia de i18n;
-- definir autorización por roles en la interfaz;
+- definir presentación y restricción de rutas por roles en la interfaz, sin sustituir la autorización del backend;
 - excluir `.agents/` del lint o aceptar explícitamente sus warnings.
 
 Cuando una decisión se implemente de forma consistente, moverla a “Convenciones establecidas” con nueva evidencia.
