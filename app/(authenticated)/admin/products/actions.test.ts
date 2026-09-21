@@ -105,6 +105,43 @@ describe("product mutations", () => {
     });
   });
 
+  it("ingests the manual only after creating the product", async () => {
+    mockTemplate();
+    const calls: string[] = [];
+    mocks.authenticatedServerRequest.mockImplementation(async (path: string) => {
+      calls.push(path);
+      if (path === "/api/products") return { id: productId };
+      return { id: "saved" };
+    });
+    const manual = new File(["%PDF-1.7"], "manual.pdf", { type: "application/pdf" });
+
+    await expect(createProduct({ ...values, initialPrice: 99.9 }, manual)).resolves.toEqual({ success: true });
+
+    expect(calls.indexOf("/api/products")).toBeLessThan(
+      calls.indexOf(`/api/products/${productId}/rag-documents`),
+    );
+    const ingestionCall = mocks.authenticatedServerRequest.mock.calls.find(
+      ([path]) => path === `/api/products/${productId}/rag-documents`,
+    );
+    expect(ingestionCall?.[1]).toEqual({ body: expect.any(FormData), method: "POST" });
+    const uploadedFile = (ingestionCall?.[1].body as FormData).get("file");
+    expect(uploadedFile).toMatchObject({ name: "manual.pdf", type: "application/pdf" });
+    await expect((uploadedFile as File).text()).resolves.toBe("%PDF-1.7");
+  });
+
+  it("does not ingest a manual when editing without a selected file", async () => {
+    mockTemplate();
+    mocks.authenticatedServerRequest
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({ id: productId });
+
+    await expect(updateProduct(productId, values)).resolves.toEqual({ success: true });
+    expect(mocks.authenticatedServerRequest).not.toHaveBeenCalledWith(
+      `/api/products/${productId}/rag-documents`,
+      expect.anything(),
+    );
+  });
+
   it("reports a combined warning when price and specifications fail", async () => {
     mockTemplate();
     mocks.authenticatedServerRequest

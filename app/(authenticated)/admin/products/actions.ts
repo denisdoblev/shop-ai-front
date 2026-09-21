@@ -62,6 +62,28 @@ function priceErrorResult(error: unknown): Extract<ProductPriceMutationResult, {
   return { message: "Ocurrió un error inesperado al registrar el precio.", success: false };
 }
 
+function manualErrorResult(error: unknown): string {
+  if (error instanceof HttpError) {
+    if (error.status === 400) return "El manual debe ser un PDF válido de hasta 25 MiB.";
+    if (error.status === 401) return "Tu sesión ha caducado. Recarga la página.";
+    if (error.status === 403) return "Tu cuenta no tiene permiso para procesar manuales.";
+    if (error.status === 404) return "El producto ya no existe.";
+    if (error.status === 409) return "Este manual ya fue agregado al producto.";
+    if (error.status === 503) return "El manual se subió, pero el procesamiento no está disponible ahora.";
+  }
+  if (error instanceof NetworkError) return "No se pudo conectar para procesar el manual.";
+  return "El producto se guardó, pero no se pudo procesar el manual.";
+}
+
+async function ingestManual(productId: string, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  await authenticatedServerRequest(`/api/products/${encodeURIComponent(productId)}/rag-documents`, {
+    body: formData,
+    method: "POST",
+  });
+}
+
 async function getTemplate(categoryId: string): Promise<ProductAttribute[]> {
   const assignments = await authenticatedServerRequest<Assignment[]>(`/api/categories/${encodeURIComponent(categoryId)}/attributes`, { cache: "no-store" });
   const results = await settle(assignments.map((assignment) => async () => {
@@ -77,7 +99,7 @@ function isCompleted(value: unknown): value is string | number | boolean {
   return typeof value === "boolean" || typeof value === "number" || (typeof value === "string" && value.trim() !== "");
 }
 
-async function save(input: unknown, mode: "create" | "edit", id?: string): Promise<ProductMutationResult> {
+async function save(input: unknown, mode: "create" | "edit", id?: string, manualFile?: File | null): Promise<ProductMutationResult> {
   await requireAuthenticatedUser();
   const parsed = mode === "create" ? createProductFormSchema.safeParse(input) : productFormSchema.safeParse(input);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors as ProductFieldErrors, message: "Revisa los campos marcados antes de guardar.", success: false };
@@ -136,11 +158,18 @@ async function save(input: unknown, mode: "create" | "edit", id?: string): Promi
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${product.id}/edit`);
   const specificationsFailed = Object.keys(specificationErrors).length > 0;
-  if (priceFailed || specificationsFailed) {
+  let manualError: string | undefined;
+  if (manualFile) {
+    try { await ingestManual(product.id, manualFile); }
+    catch (error: unknown) { manualError = manualErrorResult(error); }
+  }
+  if (priceFailed || specificationsFailed || manualError) {
     const message = priceFailed && specificationsFailed
       ? "El producto se creó, pero el precio inicial y algunas especificaciones no se guardaron. Puedes reintentarlos desde la edición."
       : priceFailed
         ? "El producto se creó, pero el precio inicial no se guardó. Puedes reintentarlo desde la edición."
+        : manualError
+          ? manualError
         : mode === "create"
           ? "El producto se creó, pero algunas especificaciones no se guardaron. Puedes reintentarlo desde la edición."
           : "Los datos generales se guardaron, pero algunas especificaciones no se sincronizaron.";
@@ -149,15 +178,16 @@ async function save(input: unknown, mode: "create" | "edit", id?: string): Promi
   return { success: true };
 }
 
-export async function createProduct(input: unknown): Promise<ProductMutationResult> {
-  return save(input, "create");
+export async function createProduct(input: unknown, manualFile?: File | null): Promise<ProductMutationResult> {
+  return save(input, "create", undefined, manualFile);
 }
 
 export async function updateProduct(
   id: string,
   input: unknown,
+  manualFile?: File | null,
 ): Promise<ProductMutationResult> {
-  return save(input, "edit", id);
+  return save(input, "edit", id, manualFile);
 }
 
 export async function registerProductPrice(id: string, input: unknown): Promise<ProductPriceMutationResult> {

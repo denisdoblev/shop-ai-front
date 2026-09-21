@@ -45,6 +45,25 @@ describe("httpRequest", () => {
     await expect(httpRequest<void>("/api/logout")).resolves.toBeUndefined();
   });
 
+  it("sends FormData without JSON serialization or a manual content type", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "document-1" }), {
+      headers: { "Content-Type": "application/json" },
+      status: 201,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const formData = new FormData();
+    formData.append("file", new File(["%PDF-1.7"], "manual.pdf", { type: "application/pdf" }));
+
+    await expect(httpRequest<{ id: string }, FormData>("/api/products/product-1/rag-documents", {
+      body: formData,
+      method: "POST",
+    })).resolves.toEqual({ id: "document-1" });
+
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(options.body).toBe(formData);
+    expect((options.headers as Headers).get("Content-Type")).toBeNull();
+  });
+
   it("throws an HttpError with the parsed backend response", async () => {
     const body = {
       message: ["email must be an email"],
@@ -65,14 +84,19 @@ describe("httpRequest", () => {
 
     await expect(promise).rejects.toMatchObject({
       body,
+      cause: expect.objectContaining({ body, response: expect.any(Response) }),
       name: "HttpError",
       status: 400,
     } satisfies Partial<HttpError>);
   });
 
-  it("distinguishes network failures from aborts", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
-    await expect(httpRequest("/api/data")).rejects.toBeInstanceOf(NetworkError);
+  it("distinguishes network failures from aborts and keeps the original cause", async () => {
+    const networkError = new TypeError("offline");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(networkError));
+    await expect(httpRequest("/api/data")).rejects.toMatchObject({
+      cause: networkError,
+      name: "NetworkError",
+    });
 
     const abortError = new DOMException("aborted", "AbortError");
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));

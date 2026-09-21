@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Check, CircleDollarSign, Package, RotateCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,6 +27,7 @@ import { createProduct, updateProduct } from "../actions";
 import { createProductFormSchema, createProductSlug, PRODUCT_NAME_MAX_LENGTH, PRODUCT_PRICE_MAX, PRODUCT_SLUG_MAX_LENGTH, productFormSchema } from "../_lib/ProductFormSchema";
 import type { CreateProductFormValues, Product, ProductAttribute, ProductFieldErrors, ProductFormValues, ProductOption, ProductPrice, ProductSpecifications } from "../_types/Product";
 import { ProductPriceManager } from "./ProductPriceManager";
+import { ProductManualDropzone } from "./ProductManualDropzone";
 
 type FormValues = ProductFormValues & { initialPrice?: number };
 
@@ -52,6 +53,8 @@ export function ProductForm(props: Props) {
   const create = props.mode === "create";
   const router = useRouter();
   const slugEdited = useRef(false);
+  const [manualFile, setManualFile] = useState<File | null>(null);
+  const [manualError, setManualError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const { clearErrors, control, formState: { errors }, handleSubmit, register, setError, setValue } = useForm<FormValues>({
     resolver: zodResolver(create ? createProductFormSchema : productFormSchema),
@@ -74,7 +77,7 @@ export function ProductForm(props: Props) {
   function submit(values: FormValues) {
     clearErrors();
     startTransition(async () => {
-      const result = create ? await createProduct(values as CreateProductFormValues) : await updateProduct(props.product.id, values);
+      const result = create ? await createProduct(values as CreateProductFormValues, manualFile) : await updateProduct(props.product.id, values, manualFile);
       if (result.success) { toast.success(create ? "Producto creado." : "Cambios guardados."); router.push("/admin/products"); router.refresh(); return; }
       if (create && result.productSaved && result.productId) { toast.warning(result.message); router.replace(`/admin/products/${result.productId}/edit`); router.refresh(); return; }
       if (result.productSaved) toast.warning(result.message);
@@ -121,6 +124,7 @@ export function ProductForm(props: Props) {
           })}</FieldGroup></FieldSet> : null}
         </CardContent></Card>
         </div>
+        <Card><CardHeader><CardTitle>Manual</CardTitle><CardDescription>Adjunta un manual PDF para indexar su contenido y habilitar búsquedas más precisas.</CardDescription></CardHeader><CardContent><ProductManualDropzone disabled={pending} error={manualError} file={manualFile} onChange={(file, error) => { setManualFile(file); setManualError(error); }} /></CardContent></Card>
         {create ? <Card><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>Precio inicial</CardTitle><CardDescription>Importe obligatorio con el que comenzará el histórico.</CardDescription></div><CircleDollarSign className="text-muted-foreground" /></div></CardHeader><CardContent><FieldGroup><Field data-invalid={Boolean(errors.initialPrice)}><FieldLabel htmlFor="product-initial-price">Importe</FieldLabel><InputGroup><InputGroupInput {...register("initialPrice", { setValueAs: (value) => value === "" ? Number.NaN : Number(value) })} id="product-initial-price" type="number" inputMode="decimal" min={0} max={PRODUCT_PRICE_MAX} step="0.01" required autoComplete="off" disabled={pending} aria-invalid={Boolean(errors.initialPrice)} aria-describedby={errors.initialPrice ? "product-initial-price-error" : "product-initial-price-help"} placeholder="0,00" /><InputGroupAddon align="inline-end">USD</InputGroupAddon></InputGroup><FieldDescription id="product-initial-price-help">Se registrará en USD con la hora del servidor después de crear el producto.</FieldDescription><FieldError id="product-initial-price-error">{errors.initialPrice?.message}</FieldError></Field></FieldGroup></CardContent></Card> : null}
       </form>
       {!create ? <ProductPriceManager prices={props.prices} productId={props.product.id} /> : null}

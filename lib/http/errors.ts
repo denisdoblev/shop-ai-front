@@ -23,6 +23,7 @@ export function getErrorMessages(value: unknown): string[] {
 
 export class HttpError extends Error {
   readonly body: unknown;
+  readonly cause: unknown;
   readonly status: number;
   readonly statusText: string;
 
@@ -32,17 +33,21 @@ export class HttpError extends Error {
       response.statusText ||
       `HTTP ${response.status}`;
 
-    super(message);
+    super(message, { cause: { body, response } });
     this.name = "HttpError";
     this.body = body;
+    this.cause = { body, response };
     this.status = response.status;
     this.statusText = response.statusText;
   }
 }
 
 export class NetworkError extends Error {
+  readonly cause: unknown;
+
   constructor(cause: unknown) {
     super("No se pudo conectar con el servicio.", { cause });
     this.name = "NetworkError";
+    this.cause = cause;
   }
 }

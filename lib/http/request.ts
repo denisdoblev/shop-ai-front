@@ -59,16 +59,22 @@ export async function httpRequest<TResponse, TBody = never>(
     ...requestOptions
   } = options;
   const headers = new Headers(providedHeaders);
+  const isFormDataBody = body instanceof FormData;
 
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
-  if (body !== undefined && !headers.has("Content-Type")) {
+  if (body !== undefined && !isFormDataBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
   try {
+    const requestBody = isFormDataBody
+      ? body
+      : body === undefined
+        ? undefined
+        : JSON.stringify(body);
     const response = await fetch(buildUrl(path, baseUrl), {
       ...requestOptions,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: requestBody,
       headers,
       method,
     });
