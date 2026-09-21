@@ -35,6 +35,21 @@ describe("FavoriteButton", () => {
     expect(toast.error).toHaveBeenCalled();
   });
 
+  it("se sincroniza con el valor actualizado desde el servidor", () => {
+    const { rerender } = render(
+      <FavoriteButton available initialFavorite={false} productId="product-1" productName="Notebook" />,
+    );
+
+    expect(screen.getByRole("button", { name: "Guardar Notebook en favoritos" })).toHaveAttribute("aria-pressed", "false");
+
+    rerender(
+      <FavoriteButton available initialFavorite={true} productId="product-1" productName="Notebook" />,
+    );
+
+    expect(screen.getByRole("button", { name: "Quitar Notebook de favoritos" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Quitar Notebook de favoritos" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("queda deshabilitado cuando favoritos no están disponibles", () => {
     render(<FavoriteButton available={false} initialFavorite={false} productId="product-1" productName="Notebook" />);
     expect(screen.getByRole("button", { name: "Guardar Notebook en favoritos" })).toBeDisabled();

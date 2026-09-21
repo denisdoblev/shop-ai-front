@@ -48,6 +48,22 @@ describe("CompareProvider", () => {
     expect(screen.getByRole("status")).toHaveTextContent("");
   });
 
+  it("sincroniza cambios externos del mismo usuario desde otra pestaña", async () => {
+    render(<CompareProvider userId="user-a"><Consumer /></CompareProvider>);
+
+    localStorage.setItem("shopai.compare.v1:user-a", JSON.stringify(products.slice(0, 2)));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "shopai.compare.v1:user-a",
+        newValue: JSON.stringify(products.slice(0, 2)),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Producto 1,Producto 2"),
+    );
+  });
+
   it("continúa en memoria cuando localStorage está bloqueado", async () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");

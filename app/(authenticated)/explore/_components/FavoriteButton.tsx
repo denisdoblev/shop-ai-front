@@ -19,6 +19,13 @@ export function FavoriteButton({
 }) {
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pending, setPending] = useState(false);
+  const [previousInitialFavorite, setPreviousInitialFavorite] = useState(initialFavorite);
+
+  if (initialFavorite !== previousInitialFavorite) {
+    setPreviousInitialFavorite(initialFavorite);
+    setFavorite(initialFavorite);
+    setPending(false);
+  }
 
   async function toggleFavorite() {
     const previous = favorite;

@@ -83,10 +83,26 @@ export function CompareProvider({
 }) {
   const storageKey = `${STORAGE_PREFIX}:${userId}`;
   const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
-  const storedProducts = useMemo(
-    () => (hydrated ? readStoredProducts(storageKey) : []),
-    [hydrated, storageKey],
-  );
+  const [storageVersion, setStorageVersion] = useState(0);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === storageKey) {
+        setStorageVersion((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [hydrated, storageKey]);
+
+  const storedProducts = useMemo(() => {
+    if (!hydrated) return [];
+    return readStoredProducts(storageKey);
+  }, [hydrated, storageKey, storageVersion]);
+
   const [selection, setSelection] = useState<{
     storageKey: string;
     products: CompareProductSelection[];
