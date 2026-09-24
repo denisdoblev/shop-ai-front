@@ -88,6 +88,10 @@ describe("ExplorePage", () => {
     expect(screen.getByText("Notebook Pro")).toBeInTheDocument();
     expect(screen.getByText("Favoritos temporalmente no disponibles")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar Notebook Pro en favoritos" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Preguntar a la IA" })).toHaveAttribute(
+      "href",
+      "/assistant?productId=00000000-0000-4000-8000-000000000001",
+    );
     expect(screen.getByLabelText("Filtros del catálogo")).toHaveClass("hidden", "lg:block");
     expect(screen.getByRole("button", { name: "Filtros" })).toBeInTheDocument();
   });

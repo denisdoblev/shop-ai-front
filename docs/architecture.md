@@ -52,9 +52,11 @@ hooks/                            # hooks compartidos de responsive y sesión
 lib/utils.ts                      # reexport de cn
 lib/http/                         # fetch tipado y clientes server/client
 lib/api/generated.ts             # contrato generado desde OpenAPI
+lib/ai/contracts.ts              # contratos manuales de IA aún ausentes de OpenAPI
 lib/auth/                         # services de auth, sesión y helpers BFF
 lib/query/                        # QueryClient y query keys
 app/api/auth/                     # BFF de login, registro, sesión y logout
+app/api/ai/ask/                   # BFF autenticado de preguntas single-turn
 app/api/admin/categories/[id]/attributes/ # BFF autenticado de plantillas
 app/api/favorites/[productId]/    # BFF autenticado para mutar favoritos
 public/                           # assets estáticos, incluido el hero del catálogo
@@ -115,14 +117,16 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 ```text
 Server Component ── lib/http/server ──────────────> backend
-Client Component ── TanStack Query/BFF ──> /api/auth/*, /api/favorites/*, /api/admin/* ──> backend
-                                                 │
-                                                 └── cookie shopai_session HttpOnly
+Client Component ── TanStack Query/BFF ──> /api/auth/*, /api/ai/ask, /api/favorites/*, /api/admin/* ──> backend
+                                                    │
+                                                    └── cookie shopai_session HttpOnly
 ```
 
 El backend devuelve un JWT Bearer en el body y no habilita CORS. Por eso el navegador no lo llama directamente: los Route Handlers de autenticación guardan el token en una cookie `HttpOnly`, devuelven sólo el perfil seguro y trasladan los errores HTTP sin revelar secretos. El Proxy no actúa como proxy HTTP ni maneja el JWT. El helper `authenticatedServerRequest` añade el Bearer desde la cookie sólo en código servidor y mantiene esa dependencia separada del cliente HTTP general.
 
 Las peticiones de autenticación usan `cache: "no-store"`. La capa servidor acepta las opciones de caché y revalidación de Next para que futuros recursos públicos decidan su política por operación.
+
+`POST /api/ai/ask` es un BFF específico, no un proxy general. Comprueba la cookie antes de contactar al backend, valida `productId` y `question`, descarta propiedades adicionales y reenvía sólo ese contrato mediante `authenticatedServerRequest` con `cache: "no-store"`. Conserva únicamente los estados esperados `400`, `401`, `404`, `503` y `504` con mensajes seguros; errores internos, fallos de red y estados inesperados se convierten en un `500` genérico. El JWT, la URL privada y los detalles del proveedor nunca forman parte de su respuesta.
 
 ## Flujos implementados
 
@@ -130,7 +134,7 @@ Las peticiones de autenticación usan `cache: "no-store"`. La capa servidor acep
 
 `/` es la entrada de descubrimiento del catálogo dentro de la carcasa autenticada. Después de repetir el guard de sesión, renderiza inmediatamente el hero y transmite de forma independiente las primeras seis categorías y los primeros tres productos detrás de límites `Suspense` con `Skeleton`. Cada producto se enriquece en paralelo con su primera imagen y el registro de precio más reciente; los fallos de imagen o precio conservan el producto con esos datos ausentes, mientras que un fallo del listado se aísla dentro de su sección. Las cards destacadas muestran esos datos ya serializables y consumen la selección global de comparación.
 
-La página y la carga de sus secciones permanecen como Server Components. `FeaturedProductsGrid` es el límite cliente pequeño que recibe sólo los productos enriquecidos; `RemoteProductImage` intenta mostrar la URL remota del catálogo y cambia al asset local cuando la URL falta o la carga falla. Las categorías usan `categoryId` en `/explore` y la comparación usa parámetros `productId` repetidos, en el orden elegido, por ejemplo `/compare?productId=<id-1>&productId=<id-2>`. El parser acepta valores escalares o repetidos, conserva UUID válidos, elimina duplicados y limita el resultado a cuatro.
+La página y la carga de sus secciones permanecen como Server Components. `FeaturedProductsGrid` es el límite cliente pequeño que recibe sólo los productos enriquecidos; `RemoteProductImage` intenta mostrar la URL remota del catálogo y cambia al asset local cuando la URL falta o la carga falla. Cada card conserva Comparar y suma el CTA compartido “Preguntar a la IA”, que navega a `/assistant?productId=<uuid>`. Las categorías usan `categoryId` en `/explore` y la comparación usa parámetros `productId` repetidos, en el orden elegido, por ejemplo `/compare?productId=<id-1>&productId=<id-2>`. El parser acepta valores escalares o repetidos, conserva UUID válidos, elimina duplicados y limita el resultado a cuatro.
 
 `CompareProvider` vive dentro del layout autenticado y guarda `{ id, name }[]` por `userId` en una clave versionada de `localStorage`. Datos corruptos o storage bloqueado degradan a una selección vacía o sólo en memoria. Home y Explore comparten las acciones `add`, `remove`, `toggle`, `replace` y `clear`. El dock global aparece únicamente en `/` y `/explore`; muestra iniciales removibles, contador, limpieza y el enlace canónico a `/compare`.
 
@@ -138,11 +142,19 @@ La página y la carga de sus secciones permanecen como Server Components. `Featu
 
 `/explore` es un Server Component protegido. Normaliza búsqueda, categorías, bandas USD, características booleanas, orden y paginación desde la URL. Luego inicia en paralelo la búsqueda agregada y los favoritos del usuario. La búsqueda fallida tiene un estado propio; un fallo de favoritos conserva el catálogo, muestra una advertencia y deshabilita los corazones. El catálogo vacío y la ausencia de coincidencias también se distinguen.
 
-Los filtros se muestran en un sidebar de escritorio y en `Sheet` móvil. Cualquier formulario de filtros omite `offset`, por lo que vuelve a la primera página. Las cards usan el producto enriquecido de `/api/products/search`; el corazón es optimista y llama al BFF same-origin `app/api/favorites/[productId]`, mientras Comparar consume el provider global. El JWT `HttpOnly` nunca llega al cliente.
+Los filtros se muestran en un sidebar de escritorio y en `Sheet` móvil. Cualquier formulario de filtros omite `offset`, por lo que vuelve a la primera página. Las cards usan el producto enriquecido de `/api/products/search`; el corazón es optimista y llama al BFF same-origin `app/api/favorites/[productId]`, Comparar consume el provider global y “Preguntar a la IA” abre el producto enfocado sin alterar esas acciones. El JWT `HttpOnly` nunca llega al cliente.
 
 `/compare` sigue siendo un Server Component y delega su acceso a datos en un loader privado de la feature. Consulta los productos seleccionados en paralelo y conserva el orden de la URL; después enriquece cada resultado con marca, categoría, primera imagen, precio más reciente y especificaciones. Las consultas auxiliares independientes usan `Promise.allSettled`, y las marcas, categorías y atributos compartidos se deduplican antes de consultarse. Un producto inaccesible se omite y produce una comparación parcial; el fallo de un recurso auxiliar conserva el producto y muestra “No informado” en los valores afectados.
 
 El loader unifica los atributos presentes, aplica primero la posición configurada en cada categoría y formatea moneda, números con unidad y booleanos antes de entregar un modelo serializable a la tabla. La tabla mantiene semántica de encabezados, scroll horizontal y primera columna fija. Al entrar directamente, los productos válidos reemplazan la selección del provider. Quitar una opción actualiza simultáneamente provider y URL; agregar vuelve a `/explore`. Debajo se muestra, sólo con al menos dos productos recuperados, un veredicto de IA estático y explícitamente marcado como vista previa; no calcula recomendaciones, ganadores, ratings ni ajustes personalizados hasta que exista soporte real del backend.
+
+### Asistente por producto
+
+`/assistant` continúa como Server Component protegido y tiene dos estados. Sin un `productId` válido muestra un formulario GET, consulta el catálogo cuando existe `q` y presenta estados inicial, sin resultados y cards seleccionables. Con `productId=<uuid>` muestra la preview del producto y el panel de conversación; si la selección nació en sus propios resultados, conserva `q` únicamente para que “Cambiar producto” vuelva a esa búsqueda. El helper compartido de `lib/assistant-url.ts` construye y parsea estas URLs: un `productId` válido tiene prioridad sobre `q`, mientras uno inválido se descarta y vuelve al selector.
+
+El loader privado obtiene primero el producto obligatorio y después carga en paralelo marca, primera imagen y precio más reciente. Un fallo del producto muestra el estado no disponible; los fallos auxiliares degradan solamente la marca, imagen o precio afectados. Home, Explore y los resultados del selector reutilizan `AskAiLink` para generar el mismo destino canónico.
+
+`ProductQuestionForm` es el único límite cliente interactivo del estado enfocado. Mantiene una lista local de intercambios exitosos, pero cada submit sigue enviando exclusivamente `{ productId, question }`: el historial no se persiste, no se envía al backend y desaparece al recargar o cambiar de producto. El formulario valida entre 1 y 1000 caracteres con contenido no blanco, evita envíos simultáneos con controles deshabilitados y una guarda síncrona, y consume exclusivamente el BFF same-origin `POST /api/ai/ask`. En éxito agrega el intercambio, limpia y reenfoca el textarea y desplaza el mensaje nuevo; en error conserva la pregunta para reintentar. Las respuestas se muestran como texto con saltos preservados, sin interpretar Markdown o HTML, y cada una conserva sus propias fuentes. Un `401` anuncia que la sesión venció y ejecuta `router.refresh()` para que el guard protegido aplique la redirección segura.
 
 ### Navegación y sidebar
 
@@ -198,7 +210,7 @@ El submit usa `useLogin` o `useRegister`. Registro transforma nombre y apellidos
 ## Áreas todavía no definidas
 
 - presentación y restricción de rutas administrativas según los roles del usuario; las mutaciones administrativas de catálogo ya dependen de la autorización `ADMIN` aplicada por el backend;
-- experiencia persistente del asistente, historial de conversaciones y pantalla de productos guardados;
+- historial persistente de conversaciones, memoria del asistente entre preguntas o recargas y pantalla de productos guardados;
 - destino de despliegue y gestión de variables de entorno de producción; en desarrollo sólo se define `BACKEND_URL`;
 - límites de dominio de largo plazo entre administración, descubrimiento, comparación y asistente;
 - una solución general de estado cliente: hoy sólo existe el contexto específico de comparación, persistido por usuario en `localStorage`.

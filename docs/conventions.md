@@ -55,6 +55,8 @@ Las relaciones anidadas sin endpoint de reemplazo —asignaciones de categoría 
 - El JWT vive exclusivamente en la cookie `shopai_session` `HttpOnly`. Sólo `lib/auth` y los Route Handlers manejan su valor.
 - Los destinos posteriores al acceso deben pasar por la utilidad compartida de `lib/auth`: sólo se aceptan rutas internas que no vuelvan a `/login`, `/register` o `/forgot-password`.
 - Los Server Components llaman al backend directamente. Los Route Handlers se reservan para el límite BFF que necesita transformar la sesión o atender al navegador.
+- Los BFF de producto son específicos por operación. `POST /api/ai/ask` valida y reduce el body antes de reenviarlo, responde siempre con `Cache-Control: no-store` y traduce fallos a cuerpos públicos `{ message, statusCode }` sin propagar detalles internos.
+- Las URLs del asistente se construyen y validan mediante `lib/assistant-url.ts`. El destino enfocado es `/assistant?productId=<uuid>` y `q` sólo conserva la búsqueda previa del selector; los consumidores no concatenan estos parámetros manualmente.
 - TanStack Query se expone mediante `app/providers.tsx`; query keys estables viven en `lib/query/keys.ts` y los hooks de feature encapsulan queries o mutations.
 - La política de caché se decide por request. Autenticación usa `no-store`; no imponerlo globalmente a futuros recursos.
 - Los listados administrativos interactivos mantienen filtros y página en la URL. El Server Component traduce esos valores a parámetros del backend y entrega datos serializables a un límite cliente pequeño.
@@ -107,7 +109,7 @@ En los archivos más recientes de autenticación se agrupan dependencias externa
 | Imports de `cn` | las primitivas shadcn importan desde el paquete `cn`; componentes de producto como `CrudTable`, Home y Explore usan el reexport `@/lib/utils` | conservar el camino propio del área; no normalizar imports en masa |
 | Colores | existen tokens semánticos en `globals.css`, pero `AuthShell.tsx` conserva varios colores literales | reutilizar tokens cuando existan; no hacer una limpieza global sin alcance explícito |
 | Idioma visible | metadata y autenticación están en español; sidebar y páginas placeholder están en inglés | no hay política de localización definida; mantener coherencia con la pantalla modificada |
-| Estado de páginas | Home, Explore, Compare y los CRUD administrativos principales están implementados; `/assistant` es parcial y `/saved`, `/history`, `/admin` y `/admin/templates` siguen como placeholders | distinguir una pantalla incompleta de los flujos que ya establecen arquitectura |
+| Estado de páginas | Home, Explore, Compare, Assistant y los CRUD administrativos principales están implementados; `/saved`, `/history`, `/admin` y `/admin/templates` siguen como placeholders | distinguir una pantalla incompleta de los flujos que ya establecen arquitectura |
 
 ## Dónde implementar
 

@@ -2,6 +2,7 @@ import { PackageOpen, SearchX, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AskAiLink } from "@/components/AskAiLink/AskAiLink";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,10 @@ function ProductCard({ favorite, favoritesAvailable, product }: { favorite: bool
         </CardAction>
       </CardHeader>
       <CardContent className="mt-auto"><p className="font-heading text-xl font-semibold">{formatPrice(product)}</p></CardContent>
-      <CardFooter><CompareProductButton productId={product.id} productName={product.name} /></CardFooter>
+      <CardFooter className="flex-col">
+        <AskAiLink className="w-full" productId={product.id} />
+        <CompareProductButton productId={product.id} productName={product.name} />
+      </CardFooter>
     </Card>
   );
 }

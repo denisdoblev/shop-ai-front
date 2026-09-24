@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AskAiLink } from "@/components/AskAiLink/AskAiLink";
 import {
   Card,
   CardContent,
@@ -70,7 +71,8 @@ export function FeaturedProductsGrid({ products }: FeaturedProductsGridProps) {
                   {formattedPrice ?? "Precio no disponible"}
                 </p>
               </CardContent>
-              <CardFooter className="mt-auto">
+              <CardFooter className="mt-auto flex-col">
+                <AskAiLink className="w-full" productId={product.id} />
                 <Button
                   aria-pressed={isSelected}
                   className="w-full"

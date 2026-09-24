@@ -5,7 +5,6 @@ import {
   buildHomeCompareHref,
   MAX_COMPARE_PRODUCTS,
   normalizeCompareProductIds,
-  parseAssistantSearchParams,
   parseCompareSearchParams,
   parseExploreSearchParams,
 } from "./discovery-search-params";
@@ -17,7 +16,6 @@ const fourthId = "3ad3a759-5005-46ca-997e-bc621de584b1";
 const fifthId = "45a581e0-fc8f-473c-88fd-631faf64b5bf";
 
 describe("discovery search params", () => {
-  it("normaliza q antes de buscar con el asistente", () => { expect(parseAssistantSearchParams({ q: "  laptop   " })).toBe("laptop"); expect(parseAssistantSearchParams({ q: ["uno", "dos"] })).toBe(""); });
   it("normaliza filtros repetidos de Explore", () => {
     expect(parseExploreSearchParams({
       categoryId: [firstId, "bad", firstId],

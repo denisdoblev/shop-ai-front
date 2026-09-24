@@ -41,6 +41,10 @@ describe("FeaturedProductsGrid", () => {
     renderGrid([product(1), product(2, { currency: null }), product(3, { price: null })]);
     expect(screen.getByText(/US\$\s*1\.000,50/)).toBeInTheDocument();
     expect(screen.getAllByText("Precio no disponible")).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Preguntar a la IA" })[0]).toHaveAttribute(
+      "href",
+      "/assistant?productId=00000000-0000-4000-8000-000000000001",
+    );
   });
 
   it("comparte la selección con el dock global", async () => {

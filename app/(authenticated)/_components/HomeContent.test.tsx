@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { HomeContent, assistantUrl } from "./HomeContent";
+import { HomeContent } from "./HomeContent";
 
 afterEach(cleanup);
 
@@ -15,7 +15,8 @@ describe("HomeContent", () => {
     expect(search).toHaveAttribute("name", "q");
     expect(search.closest("form")).toHaveAttribute("action", "/assistant");
     expect(screen.getByText("Contenido del catálogo")).toBeInTheDocument();
-    expect(assistantUrl("audio y video")).toBe("/assistant?q=audio+y+video");
+    expect(search).toHaveAttribute("placeholder", "Ej.: auriculares WH-1000XM6");
+    expect(screen.queryByLabelText("Búsquedas sugeridas")).not.toBeInTheDocument();
   });
 
 });

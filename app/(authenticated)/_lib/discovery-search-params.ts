@@ -36,7 +36,6 @@ function positiveInteger(value: SearchParam, fallback: number, allowZero = false
   return Number.isInteger(parsed) && parsed >= (allowZero ? 0 : 1) ? parsed : fallback;
 }
 
-export function parseAssistantSearchParams(params: Record<string, SearchParam>) { return single(params.q).trim().slice(0, 100); }
 export function parseExploreSearchParams(
   params: Record<string, SearchParam>,
 ): ExploreSearchFilters {
