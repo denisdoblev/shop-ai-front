@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AiAskResponse, AiAskSource } from "@/lib/ai/contracts";
+import type { AiChatResponse, AiChatSource } from "@/lib/ai/contracts";
 
 import { ProductQuestionForm } from "./ProductQuestionForm";
 
@@ -21,7 +21,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function source(overrides: Partial<AiAskSource> = {}): AiAskSource {
+function source(overrides: Partial<AiChatSource> = {}): AiChatSource {
   return {
     chunkId: "00000000-0000-4000-8000-000000000010",
     documentId: "00000000-0000-4000-8000-000000000020",
@@ -82,7 +82,7 @@ describe("ProductQuestionForm", () => {
   );
 
   it("envía el ID asociado, preserva saltos de línea y muestra fuentes", async () => {
-    const answer: AiAskResponse = {
+    const answer: AiChatResponse = {
       answer: "Primera línea\nSegunda línea",
       sources: [source()],
     };
@@ -112,10 +112,13 @@ describe("ProductQuestionForm", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Fuentes" }),
     ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/ai/ask", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, question: "¿Tiene cancelación?" }),
+      body: JSON.stringify({
+        message: "¿Tiene cancelación?",
+        context: { currentProductId: productId },
+      }),
     });
   });
 
@@ -279,7 +282,10 @@ describe("ProductQuestionForm", () => {
     );
     expect(screen.getByRole("status")).not.toHaveTextContent("Anterior");
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
-      body: JSON.stringify({ productId, question: "Otra pregunta" }),
+      body: JSON.stringify({
+        message: "Otra pregunta",
+        context: { currentProductId: productId },
+      }),
     });
   });
 

@@ -2,17 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "./route";
 
-const mocks = vi.hoisted(() => ({
-  cookies: vi.fn(),
-}));
-
+const mocks = vi.hoisted(() => ({ cookies: vi.fn() }));
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 
 const productId = "00000000-0000-4000-8000-000000000001";
 const backendUrl = "http://private-backend.internal:3000";
 
 function request(body: unknown) {
-  return new Request("http://localhost:3001/api/ai/ask", {
+  return new Request("http://localhost:3001/api/ai/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -26,13 +23,11 @@ function backendResponse(body: unknown, status = 200) {
   });
 }
 
-describe("POST /api/ai/ask", () => {
+describe("POST /api/ai/chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("BACKEND_URL", backendUrl);
-    mocks.cookies.mockResolvedValue({
-      get: vi.fn(() => ({ value: "server-only-jwt" })),
-    });
+    mocks.cookies.mockResolvedValue({ get: vi.fn(() => ({ value: "server-only-jwt" })) });
   });
 
   afterEach(() => {
@@ -40,62 +35,78 @@ describe("POST /api/ai/ask", () => {
     vi.unstubAllGlobals();
   });
 
-  it("envía al backend privado sólo el contrato permitido con el Bearer server-only", async () => {
+  it("reenvía sólo el contrato permitido con el Bearer server-only y sanea la respuesta", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       backendResponse({
         answer: "Sí.",
         sources: [],
+        trace: { secret: true },
         jwt: "leaked-backend-jwt",
-        providerBody: { secret: true },
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-
-    const response = await POST(
-      request({
-        productId,
-        question: "¿Tiene Bluetooth?",
-        topK: 99,
-        injected: "omit",
-      }),
-    );
+    const response = await POST(request({
+      message: "¿Vale la pena?",
+      context: { currentProductId: productId, replaceProductId: "blocked" },
+      history: ["blocked"],
+    }));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`${backendUrl}/api/ai/ask`);
+    expect(url).toBe(`${backendUrl}/api/ai/chat`);
     expect(init.method).toBe("POST");
     expect(init.cache).toBe("no-store");
-    expect(init.body).toBe(
-      JSON.stringify({ productId, question: "¿Tiene Bluetooth?" }),
-    );
-    expect(new Headers(init.headers).get("Authorization")).toBe(
-      "Bearer server-only-jwt",
-    );
+    expect(init.body).toBe(JSON.stringify({ message: "¿Vale la pena?", context: { currentProductId: productId } }));
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer server-only-jwt");
     const responseText = await response.text();
     expect(JSON.parse(responseText)).toEqual({ answer: "Sí.", sources: [] });
     expect(responseText).not.toContain("server-only-jwt");
     expect(responseText).not.toContain("leaked-backend-jwt");
-    expect(responseText).not.toContain("providerBody");
+    expect(responseText).not.toContain("trace");
     expect(responseText).not.toContain(backendUrl);
+  });
+
+  it("normaliza a null los campos opcionales omitidos de una fuente", async () => {
+    const source = {
+      chunkId: "chunk-1",
+      documentId: "document-1",
+      documentName: "Ficha técnica",
+      productId,
+      chunkIndex: 0,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      backendResponse({ answer: "Sí.", sources: [source] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({
+      message: "¿Vale la pena?",
+      context: { currentProductId: productId },
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      answer: "Sí.",
+      sources: [{ ...source, pageStart: null, pageEnd: null, section: null }],
+    });
   });
 
   it.each([
     [null],
     [[]],
     [{}],
-    [{ productId: "not-a-uuid", question: "Pregunta" }],
-    [{ productId, question: "" }],
-    [{ productId, question: "   \n" }],
-    [{ productId, question: "a".repeat(1001) }],
-    [{ productId, question: 42 }],
-  ])("rechaza cuerpos inválidos sin contactar al backend: %j", async (body) => {
+    [{ message: "", context: { currentProductId: productId } }],
+    [{ message: "   \n", context: { currentProductId: productId } }],
+    [{ message: "a".repeat(1001), context: { currentProductId: productId } }],
+    [{ message: 42, context: { currentProductId: productId } }],
+    [{ message: "Pregunta", context: { currentProductId: "not-a-uuid" } }],
+    [{ message: "Pregunta", context: null }],
+  ])("rechaza entradas inválidas sin llamar al backend: %j", async (body) => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-
     const response = await POST(request(body));
-
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       message: "La solicitud no es válida.",
@@ -104,10 +115,10 @@ describe("POST /api/ai/ask", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rechaza JSON malformado", async () => {
+  it("rechaza JSON malformado sin llamar al backend", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const malformed = new Request("http://localhost:3001/api/ai/ask", {
+    const malformed = new Request("http://localhost:3001/api/ai/chat", {
       method: "POST",
       body: "{",
     });
@@ -118,12 +129,14 @@ describe("POST /api/ai/ask", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("devuelve 401 sin contactar al backend cuando falta la cookie", async () => {
+  it("devuelve 401 sin llamar al backend cuando falta la cookie", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     mocks.cookies.mockResolvedValue({ get: vi.fn(() => undefined) });
 
-    const response = await POST(request({ productId, question: "Pregunta" }));
+    const response = await POST(
+      request({ message: "Pregunta", context: { currentProductId: productId } }),
+    );
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({
@@ -140,21 +153,25 @@ describe("POST /api/ai/ask", () => {
     [503, "El servicio de IA no está disponible temporalmente."],
     [504, "El servicio de IA tardó demasiado en responder."],
   ])("preserva el estado backend %i con un cuerpo seguro", async (status, message) => {
-    const secretBody = {
-      message: "provider failed with secret-token",
-      jwt: "private-jwt",
-      backendUrl,
-    };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(backendResponse(secretBody, status)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        backendResponse(
+          { message: "provider failed with secret-token", jwt: "private-jwt" },
+          status,
+        ),
+      ),
+    );
 
-    const response = await POST(request({ productId, question: "Pregunta" }));
+    const response = await POST(
+      request({ message: "Pregunta", context: { currentProductId: productId } }),
+    );
     const text = await response.text();
 
     expect(response.status).toBe(status);
     expect(JSON.parse(text)).toEqual({ message, statusCode: status });
     expect(text).not.toContain("secret-token");
     expect(text).not.toContain("private-jwt");
-    expect(text).not.toContain(backendUrl);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
@@ -166,7 +183,9 @@ describe("POST /api/ai/ask", () => {
       ),
     );
 
-    const response = await POST(request({ productId, question: "Pregunta" }));
+    const response = await POST(
+      request({ message: "Pregunta", context: { currentProductId: productId } }),
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({
@@ -175,10 +194,27 @@ describe("POST /api/ai/ask", () => {
     });
   });
 
+  it("convierte respuestas exitosas malformadas en un 500 genérico", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        backendResponse({ answer: "Respuesta", sources: [{ chunkId: 1 }] }),
+      ),
+    );
+
+    const response = await POST(
+      request({ message: "Pregunta", context: { currentProductId: productId } }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
   it("convierte fallos de red en un 500 genérico", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("private host failed")));
 
-    const response = await POST(request({ productId, question: "Pregunta" }));
+    const response = await POST(
+      request({ message: "Pregunta", context: { currentProductId: productId } }),
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({

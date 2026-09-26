@@ -1,25 +1,24 @@
-export type AiAskRequest = {
-  productId: string;
-  question: string;
-};
+import type { components } from "@/lib/api/generated";
 
-export type AiAskSource = {
-  chunkId: string;
-  documentId: string;
-  documentName: string;
-  productId: string;
-  chunkIndex: number;
+type GeneratedAiChatSource = components["schemas"]["AiDocumentSourceDto"];
+
+export type AiChatSource = Omit<
+  GeneratedAiChatSource,
+  "pageStart" | "pageEnd" | "section"
+> & {
   pageStart: number | null;
   pageEnd: number | null;
   section: string | null;
 };
 
-export type AiAskResponse = {
-  answer: string;
-  sources: AiAskSource[];
-};
+export type AiChatRequest = components["schemas"]["ChatRequestDto"];
 
-export type AiAskErrorResponse = {
+export type AiChatResponse = Omit<
+  components["schemas"]["ChatResponseDto"],
+  "sources"
+> & { sources: AiChatSource[] };
+
+export type AiChatErrorResponse = {
   message: string;
   statusCode: number;
 };

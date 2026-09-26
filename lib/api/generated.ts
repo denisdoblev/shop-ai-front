@@ -355,6 +355,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ai/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chat about one server-bound product using explicit tools */
+        post: operations["ChatController_answer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/products/{productId}/rag-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest a local PDF for product RAG */
+        post: operations["IngestionController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -722,6 +756,55 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        ChatContextDto: {
+            /** Format: uuid */
+            currentProductId: string;
+        };
+        ChatRequestDto: {
+            message: string;
+            context: components["schemas"]["ChatContextDto"];
+        };
+        AiDocumentSourceDto: {
+            /** Format: uuid */
+            chunkId: string;
+            /** Format: uuid */
+            documentId: string;
+            documentName: string;
+            /** Format: uuid */
+            productId: string;
+            chunkIndex: number;
+            pageStart?: number | null;
+            pageEnd?: number | null;
+            section?: string | null;
+        };
+        ChatResponseDto: {
+            answer: string;
+            sources: components["schemas"]["AiDocumentSourceDto"][];
+        };
+        RagDocumentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            name: string;
+            /** @enum {string} */
+            sourceType: "pdf" | "text";
+            /** @example application/pdf */
+            mimeType: string;
+            /** @enum {string} */
+            status: "pending" | "processing" | "ready" | "failed";
+            pageCount: number;
+            chunkCount: number;
+            /**
+             * @description Decimal byte count
+             * @example 48213
+             */
+            fileSizeBytes: string;
+            /** Format: date-time */
+            processedAt: string;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;
@@ -2445,6 +2528,145 @@ export interface operations {
             };
             /** @description Authentication required */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ChatController_answer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponseDto"];
+                };
+            };
+            /** @description Invalid request body */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unexpected internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description AI dependency unavailable or tool limit reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Generation provider timed out */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    IngestionController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @default 400 */
+                    chunkSize?: number;
+                    /** @default 80 */
+                    chunkOverlap?: number;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagDocumentResponseDto"];
+                };
+            };
+            /** @description Invalid PDF or chunk configuration */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Insufficient role */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active document has the same hash */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Embedding provider unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -17,10 +17,10 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type {
-  AiAskErrorResponse,
-  AiAskRequest,
-  AiAskResponse,
-  AiAskSource,
+  AiChatErrorResponse,
+  AiChatRequest,
+  AiChatResponse,
+  AiChatSource,
 } from "@/lib/ai/contracts";
 
 type Props = {
@@ -31,7 +31,7 @@ type Props = {
 type Exchange = {
   id: number;
   question: string;
-  response: AiAskResponse;
+  response: AiChatResponse;
 };
 
 const INVALID_QUESTION_MESSAGE =
@@ -49,7 +49,7 @@ function errorMessage(status: number): string {
   return GENERIC_ERROR_MESSAGE;
 }
 
-export function formatSourcePages(source: AiAskSource): string | null {
+export function formatSourcePages(source: AiChatSource): string | null {
   const { pageStart, pageEnd } = source;
 
   if (pageStart === null && pageEnd === null) return null;
@@ -62,7 +62,7 @@ export function formatSourcePages(source: AiAskSource): string | null {
   return `Hasta página ${pageEnd}`;
 }
 
-function SourceItem({ source }: { source: AiAskSource }) {
+function SourceItem({ source }: { source: AiChatSource }) {
   const pages = formatSourcePages(source);
   const section = source.section?.trim();
 
@@ -169,10 +169,13 @@ export function ProductQuestionForm({ productId, productName }: Props) {
     requestInFlight.current = true;
     setIsPending(true);
     const submittedQuestion = question;
-    const body: AiAskRequest = { productId, question: submittedQuestion };
+    const body: AiChatRequest = {
+      message: submittedQuestion,
+      context: { currentProductId: productId },
+    };
 
     try {
-      const response = await fetch("/api/ai/ask", {
+      const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -180,7 +183,7 @@ export function ProductQuestionForm({ productId, productName }: Props) {
 
       if (!response.ok) {
         const responseError = (await response.json().catch(() => null)) as
-          | AiAskErrorResponse
+          | AiChatErrorResponse
           | null;
         const status = responseError?.statusCode ?? response.status;
         if (status === 400) {
@@ -193,7 +196,7 @@ export function ProductQuestionForm({ productId, productName }: Props) {
         return;
       }
 
-      const result = (await response.json()) as AiAskResponse;
+      const result = (await response.json()) as AiChatResponse;
       nextExchangeId.current += 1;
       setExchanges((current) => [
         ...current,
