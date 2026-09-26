@@ -52,11 +52,11 @@ hooks/                            # hooks compartidos de responsive y sesión
 lib/utils.ts                      # reexport de cn
 lib/http/                         # fetch tipado y clientes server/client
 lib/api/generated.ts             # contrato generado desde OpenAPI
-lib/ai/contracts.ts              # contratos manuales de IA aún ausentes de OpenAPI
+lib/ai/contracts.ts              # aliases y estrechamientos sobre los DTO de IA generados desde OpenAPI
 lib/auth/                         # services de auth, sesión y helpers BFF
 lib/query/                        # QueryClient y query keys
 app/api/auth/                     # BFF de login, registro, sesión y logout
-app/api/ai/ask/                   # BFF autenticado de preguntas single-turn
+app/api/ai/chat/                  # BFF autenticado actual del asistente por producto
 app/api/admin/categories/[id]/attributes/ # BFF autenticado de plantillas
 app/api/favorites/[productId]/    # BFF autenticado para mutar favoritos
 public/                           # assets estáticos, incluido el hero del catálogo
@@ -117,7 +117,7 @@ Los límites cliente aparecen donde existe interactividad o una primitiva que la
 
 ```text
 Server Component ── lib/http/server ──────────────> backend
-Client Component ── TanStack Query/BFF ──> /api/auth/*, /api/ai/ask, /api/favorites/*, /api/admin/* ──> backend
+Client Component ── TanStack Query/BFF ──> /api/auth/*, /api/ai/chat, /api/favorites/*, /api/admin/* ──> backend
                                                     │
                                                     └── cookie shopai_session HttpOnly
 ```
@@ -126,7 +126,7 @@ El backend devuelve un JWT Bearer en el body y no habilita CORS. Por eso el nave
 
 Las peticiones de autenticación usan `cache: "no-store"`. La capa servidor acepta las opciones de caché y revalidación de Next para que futuros recursos públicos decidan su política por operación.
 
-`POST /api/ai/ask` es un BFF específico, no un proxy general. Comprueba la cookie antes de contactar al backend, valida `productId` y `question`, descarta propiedades adicionales y reenvía sólo ese contrato mediante `authenticatedServerRequest` con `cache: "no-store"`. Conserva únicamente los estados esperados `400`, `401`, `404`, `503` y `504` con mensajes seguros; errores internos, fallos de red y estados inesperados se convierten en un `500` genérico. El JWT, la URL privada y los detalles del proveedor nunca forman parte de su respuesta.
+`POST /api/ai/chat` es la única superficie HTTP del asistente y un BFF específico, no un proxy general. Comprueba la cookie antes de contactar al backend, valida `message` y `context.currentProductId`, descarta propiedades adicionales y reenvía sólo ese contrato mediante `authenticatedServerRequest` con `cache: "no-store"`. Conserva únicamente los estados esperados `400`, `401`, `404`, `503` y `504` con mensajes seguros; errores internos, fallos de red y estados inesperados se convierten en un `500` genérico. El JWT, la URL privada, los traces y los detalles del proveedor nunca forman parte de su respuesta.
 
 ## Flujos implementados
 
@@ -154,7 +154,7 @@ El loader unifica los atributos presentes, aplica primero la posición configura
 
 El loader privado obtiene primero el producto obligatorio y después carga en paralelo marca, primera imagen y precio más reciente. Un fallo del producto muestra el estado no disponible; los fallos auxiliares degradan solamente la marca, imagen o precio afectados. Home, Explore y los resultados del selector reutilizan `AskAiLink` para generar el mismo destino canónico.
 
-`ProductQuestionForm` es el único límite cliente interactivo del estado enfocado. Mantiene una lista local de intercambios exitosos, pero cada submit sigue enviando exclusivamente `{ productId, question }`: el historial no se persiste, no se envía al backend y desaparece al recargar o cambiar de producto. El formulario valida entre 1 y 1000 caracteres con contenido no blanco, evita envíos simultáneos con controles deshabilitados y una guarda síncrona, y consume exclusivamente el BFF same-origin `POST /api/ai/ask`. En éxito agrega el intercambio, limpia y reenfoca el textarea y desplaza el mensaje nuevo; en error conserva la pregunta para reintentar. Las respuestas se muestran como texto con saltos preservados, sin interpretar Markdown o HTML, y cada una conserva sus propias fuentes. Un `401` anuncia que la sesión venció y ejecuta `router.refresh()` para que el guard protegido aplique la redirección segura.
+`ProductQuestionForm` es el único límite cliente interactivo del estado enfocado. Mantiene una lista local de intercambios exitosos, pero cada submit sigue enviando exclusivamente `{ message, context: { currentProductId } }`: el historial no se persiste, no se envía al backend y desaparece al recargar o cambiar de producto. El formulario valida entre 1 y 1000 caracteres con contenido no blanco, evita envíos simultáneos con controles deshabilitados y una guarda síncrona, y consume exclusivamente el BFF same-origin `POST /api/ai/chat`. En éxito agrega el intercambio, limpia y reenfoca el textarea y desplaza el mensaje nuevo; en error conserva la pregunta para reintentar. Las respuestas se muestran como texto con saltos preservados, sin interpretar Markdown o HTML, y cada una conserva sus propias fuentes. Un `401` anuncia que la sesión venció y ejecuta `router.refresh()` para que el guard protegido aplique la redirección segura.
 
 ### Navegación y sidebar
 

@@ -80,6 +80,9 @@ Para regenerar el contrato con el backend activo:
 pnpm api:types
 ```
 
+`lib/ai/contracts.ts` deriva el request y response de chat del contrato generado
+y conserva solamente el estrechamiento seguro que aplica el BFF a las fuentes.
+
 El comando lee `${BACKEND_URL}/api/docs-json` y reemplaza `lib/api/generated.ts`. Nunca editar ese archivo manualmente ni copiar secretos a la documentación.
 
 ## Documentación y cambios
